@@ -1,238 +1,230 @@
-# pub/sub-loop Sprint 执行计划
+# pub/sub-loop Sprint 计划
 
-> 生成时间：2026-07-10 | 建议节奏：2 周/Sprint
-
----
-
-## Sprint 节奏与容量模型
-
-| 参数 | 值 |
-|------|-----|
-| Sprint 周期 | 2 周 |
-| 活跃 Agent | 6（Claude-A/B/C/D/E/G） |
-| 每 Agent 每 Sprint 处理能力 | ~15-20 项（含 review） |
-| 每 Sprint 总容量 | ~100 项 |
-| BUG 修复预留 | 20%（~20 项/Sprint） |
+> 基于 1626 个 PRD 全量分析 · 生成日期: 2026-07-10
 
 ---
 
-## Sprint 0：紧急清理（Week 1-2）
+## 一、当前 Sprint 状态仪表板
 
-**目标**：清除所有阻塞项和分诊债务，为正式迭代扫清障碍。
+### 整体进度
 
-### 工作包
+| 指标 | 数值 | 健康度 |
+|------|------|--------|
+| Sprint 总项数 | 467 | — |
+| In Progress | 219 (46.9%) | 🟡 并行度过高 |
+| In Review | 202 (43.3%) | 🔴 Review 堆积 |
+| Blocked | 26 (5.6%) | 🟡 需立即处理 |
+| Todo | 10 (2.1%) | 🟢 基本拉入 |
+| Needs Triage | 10 (2.1%) | 🟡 应为 0 |
+| Done | 0 (0%) | 🔴 无交付产出 |
 
-| 任务 | 数量 | 负责人 | 完成标准 |
-|------|------|--------|---------|
-| transport 模块 Needs Triage 分诊 | 21 | Manager + Claude-D | 全部标注优先级和 Sprint |
-| 其他模块 Needs Triage 分诊 | 34 | Manager | 全部标注优先级和 Sprint |
-| Blocked 项处理——可内部解决 | ~15 | Claude-D/E | 状态变为 In Progress |
-| Blocked 项处理——等待外部 | ~11 | Manager | 标注 on-hold + 替代方案 |
-| task 模块接口设计 PRD 补充 | +10 | Claude-A | 新增 PRD 入库 |
-| event 模块接口设计 PRD 补充 | +4 | Claude-A | 新增 PRD 入库 |
+### 关键发现
 
-### 退出标准
+**Review 瓶颈**: 202 项处于 In Review 状态，占 Sprint 的 43.3%。这意味着近半数工作已完成开发但卡在 Review 环节。按 Claude 实例分布：Claude-A 41 项、Claude-D 52 项、Claude-E 80 项在 Review 中。
 
-- Needs Triage = 0
-- Blocked（可内部解决）= 0
-- task 模块 PRD ≥ 10
-- event 模块 PRD ≥ 5
+**零 Done**: 当前 Sprint 没有任何一项标记为 Done。这是最大的红旗信号——大量工作在流动但没有完成闭环。
 
----
-
-## Sprint 1：传输统一（Week 3-4）
-
-**目标**：完成统一传输抽象层，打通 RTPS + 共享内存双路径。
-
-### P0 EPIC 推进
-
-| EPIC | 目标状态 | Agent |
-|------|---------|-------|
-| 统一 RTPS + 共享内存传输后端 | 抽象层代码完成、UT 通过 | Claude-D |
-| transport/memory_pool 路线图 | 类型化分配器接口定义完成 | Claude-A |
-| 多源个体状态融合引擎 | 融合策略接口定义 + LastWriteWins 实现 | Claude-A |
-
-### FEA & BUG
-
-| 模块 | FEA | BUG | Agent |
-|------|-----|-----|-------|
-| transport | 5 | 0 | Claude-D |
-| data | 3 | 0 | Claude-A |
-| message | 3 | 2 | Claude-E |
-| base | 5 | 2 | Claude-E |
-| scheduler | 2 | 0 | Claude-D |
-| common | 0 | 5 | Claude-B |
-| tools | 0 | 3 | Claude-C |
-
-### 里程碑 M1
-
-- `transport::IndividualChannel<T>` 统一抽象可编译
-- 融合引擎 LastWriteWins 策略通过单元测试
-- P1 BUG 修复 ≥ 12
+**建议**: 立即设定 "Review → Done" 转化目标，本周内至少将 50 个 In Review 项推到 Done。
 
 ---
 
-## Sprint 2：零拷贝 + 调度器（Week 5-6）
+## 二、当前 Sprint 按模块分解
 
-**目标**：零拷贝传输端到端打通，调度器 warp-scan 产品化。
+### P0 EPIC 追踪板
 
-### P0 EPIC 推进
+| # | EPIC | 模块 | 负责人 | 状态 | 阻塞项 |
+|---|------|------|--------|------|--------|
+| 1 | 统一 RTPS + SHM 传输后端 | transport | Claude-D | In Progress | 依赖 memory_pool |
+| 2 | 多源个体状态融合引擎 | data | Claude-A | In Progress | — |
+| 3 | 零拷贝异步个体状态传输 | transport | Claude-A | In Progress | 依赖 EPIC #1 |
+| 4 | 大规模世界状态缓冲 100K+ | data | Claude-D | In Progress | 依赖 EPIC #1,#3 |
+| 5 | 跨平台世界初始化容器 | mainboard | Claude-E | In Progress | — |
+| 6 | Component 平台分级暴露 | component | Claude-E | In Progress | — |
+| 7 | transport/memory_pool 路线图 | transport | Claude-A | In Progress | — |
+| 8 | ChannelWriter pub/sub 调度优化 | data | Claude-D | In Progress | 依赖 EPIC #12 |
+| 9 | 并发哈希表 → DynamicComponentBase | component | Claude-E | In Progress | — |
+| 10 | std 并行算法 → world::std | common | Claude-A | In Progress | — |
+| 11 | Top-k 优先级选择框架 | data | Claude-D | In Progress | 依赖 EPIC #2 |
+| 12 | WSPRO warp-scan 调度产品化 | scheduler | Claude-D | In Progress | — |
+| 13 | 世界查询算法补全 | data | Claude-D | In Review | — |
 
-| EPIC | 目标状态 | Agent |
-|------|---------|-------|
-| 零拷贝异步个体状态传输协议 | 端到端 benchmark 完成 | Claude-A |
-| WSPRO warp-scan 算法产品化 | API 稳定、集成到 scheduler | Claude-D |
-| 跨平台世界初始化容器 | x86 路径完成、ARM 路径 50% | Claude-E |
+### 建议完成顺序
 
-### FEA & BUG
+根据依赖关系，推荐的 EPIC 完成顺序为：
 
-| 模块 | FEA | BUG | Agent |
-|------|-----|-----|-------|
-| transport | 4 | 0 | Claude-A |
-| scheduler | 4 | 0 | Claude-D |
-| croutine | 3 | 0 | Claude-D |
-| mainboard | 1 | 0 | Claude-E |
-| base | 4 | 3 | Claude-E |
-| common | 0 | 5 | Claude-B |
-| io | 3 | 2 | Claude-G |
+```
+Wave 1 (无前置依赖，立即推进):
+  #7  transport/memory_pool ─────────┐
+  #5  跨平台世界初始化容器            │
+  #6  Component 平台分级暴露          │
+  #10 std 并行算法 → world::std      │
+  #12 WSPRO warp-scan 调度产品化     │
+  #13 世界查询算法补全 (已 In Review) │
+                                     │
+Wave 2 (依赖 Wave 1):               │
+  #1  统一 RTPS + SHM ◄─────────────┘ (依赖 #7)
+  #2  多源状态融合引擎
+  #9  并发哈希表迁移
+  #8  ChannelWriter 调度优化 (依赖 #12)
 
-### 里程碑 M2
+Wave 3 (依赖 Wave 2):
+  #3  零拷贝异步传输 (依赖 #1)
+  #11 Top-k 优先级选择 (依赖 #2)
 
-- 零拷贝路径 benchmark：2KB IndividualState 传输延迟 < 10μs
-- warp-scan 集成到 scheduler::CRoutine
-- P1 BUG 累计修复 ≥ 30
-
----
-
-## Sprint 3：融合引擎 + 世界查询（Week 7-8）
-
-**目标**：融合引擎完整实现，世界查询算法覆盖核心场景。
-
-### P0 EPIC 推进
-
-| EPIC | 目标状态 | Agent |
-|------|---------|-------|
-| 多源个体状态融合引擎 | 三种策略全部实现 + 集成测试 | Claude-A |
-| data::ChannelWriter 优化 | 工作窃取 + Ampere 感知 | Claude-D |
-| 世界查询算法 | traversal/aggregation/set-ops 完成 | Claude-A |
-| 大规模世界缓冲 | 背压策略 + 4096 分块可用 | Claude-D |
-| top-k 优先选择框架 | rank/filter API 完成 | Claude-G |
-
-### FEA & BUG
-
-| 模块 | FEA | BUG | Agent |
-|------|-----|-----|-------|
-| data | 8 | 0 | Claude-A/D |
-| component | 4 | 0 | Claude-E |
-| context | 3 | 0 | Claude-B |
-| common | 5 | 5 | Claude-B/G |
-| tools | 3 | 3 | Claude-C |
-| io | 4 | 2 | Claude-G |
-
-### 里程碑 M3
-
-- 融合引擎 3 策略（LastWriteWins, WeightedAvg, SemanticMerge）通过集成测试
-- 10K 个体压力测试通过（mock 传输层）
-- Current Sprint In Progress 项 < 50
+Wave 4 (依赖 Wave 3):
+  #4  大规模世界状态缓冲 (依赖 #1, #3)
+```
 
 ---
 
-## Sprint 4-6：算法库扩展 + 工具链强化（Week 9-14）
+## 三、Claude 实例 Sprint 任务分配
 
-**目标**：common 模块 P0 EPIC 批量推进，CI/文档基础设施搭建。
+### 当前分配
 
-### Sprint 4 重点
+| 实例 | 总项 | In Progress | In Review | Blocked | 负载 |
+|------|------|------------|-----------|---------|------|
+| Claude-D | 133 | 70 | 52 | 9 | 🔴 |
+| Claude-E | 169 | 78 | 80 | 10 | 🔴 |
+| Claude-A | 82 | 35 | 41 | 2 | 🟡 |
+| Claude-G | 37 | 18 | 16 | 2 | 🟢 |
+| Claude-B | 22 | 10 | 9 | 3 | 🟢 |
+| Claude-C | 13 | 7 | 4 | 0 | 🟢 |
+| Manager | 11 | 1 | 0 | 0 | 🟢 |
 
-| 主题 | 目标 | Agent |
-|------|------|-------|
-| std 等价并行算法迁移 | 完成 sort, reduce, scan 三大类 | Claude-D |
-| Component 平台适配 | ARM RK3568 能力集定义 | Claude-E |
-| CI 第三方测试 | 框架搭建 + 首批 5 个测试 | Claude-C |
-| Extended FP 支持 | bf16/fp8 base 层实现 | Claude-E |
+### 建议重分配
 
-### Sprint 5 重点
+| 变更 | 来源 | 目标 | 项数 | 说明 |
+|------|------|------|------|------|
+| common P3 FEA | Claude-D | Claude-G | ~30 | Claude-G 已有 common 经验 |
+| common P3 PRD | Claude-D | Claude-B | ~20 | 释放 Claude-D 算法产能 |
+| tools P3 FEA | Claude-E | Claude-C | ~25 | Claude-C 可承接工具链 |
+| tools P3 DOC | Claude-E | Claude-B | ~20 | 文档任务不需要深度领域知识 |
+| Needs Triage | 散落 | Manager | 10 | Manager 应接管全部 Triage |
 
-| 主题 | 目标 | Agent |
-|------|------|-------|
-| TensorParallel 大输入支持 | > 2^31 元素分块处理 | Claude-D |
-| 工作窃取全面铺开 | PipelineParallel 所有算法适配 | Claude-B |
-| CI 基准测试 MVP | 自动回归检测 + 看板 | Claude-C |
-| io Python 暴露 | neuron::ptx Python binding 完成 | Claude-G |
+重分配后预期负载：
 
-### Sprint 6 重点
-
-| 主题 | 目标 | Agent |
-|------|------|-------|
-| 确定性算法 | 全量 reduce/scan 确定性路径 | Claude-D |
-| 设备级协作算法 | device-scope cooperative 完成 | Claude-B |
-| Diataxis 文档框架 | 迁移完成 50% 文档 | Claude-C |
-| Phase 2 内容定义 | 从 Phase 1 毕业项中拆分实现任务 | Manager |
-
-### 里程碑 M4-M6
-
-- M4：common 模块 P0 In Progress ≥ 10
-- M5：CI 基准测试看板上线
-- M6：Phase 1: Skeleton 完成率 ≥ 40%
-
----
-
-## Sprint 7-9：骨架批量完成 + L3 启动（Week 15-20）
-
-**目标**：Phase 1 骨架大规模收尾，L3 展示层开工。
-
-### 工作分配
-
-| Sprint | common | io | base | tools | L3 |
-|--------|--------|----|------|-------|----|
-| S7 | 60 骨架 | 30 骨架 | 20 骨架 | 10 | L3-001 设计 |
-| S8 | 60 骨架 | 30 骨架 | 20 骨架 | 10 | L3-001 实现 |
-| S9 | 60 骨架 | 30 骨架 | 15 骨架 | 10 | L3-002 实现 |
-
-### 里程碑 M7-M9
-
-- M7：Phase 1: Skeleton 完成率 ≥ 60%
-- M8：State Bridge (L3-001) 可发送 DeltaFrame
-- M9：Phase 1: Skeleton 完成率 ≥ 80%
+| 实例 | 调整后 | 负载 |
+|------|--------|------|
+| Claude-D | ~83 | 🟡 可控 |
+| Claude-E | ~124 | 🟡 偏高但可接受 |
+| Claude-A | 82 | 🟡 不变 |
+| Claude-G | ~67 | 🟡 适中 |
+| Claude-B | ~62 | 🟡 适中 |
+| Claude-C | ~38 | 🟢 正常 |
+| Manager | ~21 | 🟢 含 Triage 职责 |
 
 ---
 
-## Sprint 10-12：收尾 + 集成（Week 21-26）
+## 四、Blocked 项解除计划
 
-**目标**：Phase 1 完成，端到端集成验证。
+### 阻塞链分析
 
-### 关键交付
+```
+[Blocked] base: pool_memory_resource 可行性评估
+    │
+    ├──► [Blocked] transport: memory_pool 相关项
+    │        │
+    │        └──► [间接受阻] data: 大规模缓冲相关项
+    │
+    └──► [Blocked] base: DistributedCore atomics 迁移
 
-| 交付物 | Sprint | 验收标准 |
-|--------|--------|---------|
-| Phase 1 Skeleton 100% 完成 | S10 | 所有 955 项 Done |
-| 端到端集成测试套件 | S11 | 个体发布 → 世界快照 → Web 渲染 全链路通过 |
-| 100K 个体性能基准 | S11 | 状态同步延迟 < 50ms, GPU 显存 < 4GB |
-| needle-tools 渲染演示 | S12 | 浏览器中实时显示 1000 个体的 GLB 场景 |
-| Phase 2 完整计划 | S12 | 所有实现阶段 PRD 细化完成 |
+[Blocked] common: std::string + tensor_parallel::tuple 编译失败
+    │
+    └──► [Blocked] common: min_element/max_element int_max 问题
+
+[Blocked] io: NVTX v2 + PipelineParallel 编译冲突
+    │
+    └──► [Blocked] io: 相关序列化功能
+
+[Blocked] tools: 文档链接/API doc 问题 (独立，不阻塞核心)
+```
+
+### 解除顺序和时间目标
+
+| 批次 | 阻塞项 | 优先级 | 目标时间 | 负责人 |
+|------|--------|--------|---------|--------|
+| Batch 1 | base pool_memory_resource Spike | P1 → P0 | 本周 | Claude-A |
+| Batch 1 | common string+tuple 编译修复 | P1 → P0 | 本周 | Claude-A |
+| Batch 2 | io NVTX v2 编译冲突 | P1 | 下周 | Claude-E |
+| Batch 2 | base atomics 迁移评估 | P3 | 下周 | Claude-A |
+| Batch 3 | tools 文档修复 | P3 | Phase 0 结束前 | Claude-B |
 
 ---
 
-## Agent 总负载规划
+## 五、Next Sprint 预规划
 
-| Agent | S0 | S1 | S2 | S3 | S4-6 | S7-9 | S10-12 | 总计 |
-|-------|----|----|----|----|------|------|--------|------|
-| Claude-A | 12 | 16 | 18 | 18 | 45 | 30 | 20 | 159 |
-| Claude-B | 0 | 8 | 8 | 12 | 40 | 50 | 30 | 148 |
-| Claude-C | 0 | 6 | 0 | 8 | 35 | 40 | 30 | 119 |
-| Claude-D | 20 | 18 | 18 | 18 | 50 | 60 | 25 | 209 |
-| Claude-E | 18 | 18 | 16 | 14 | 50 | 80 | 40 | 236 |
-| Claude-G | 0 | 8 | 10 | 14 | 40 | 60 | 30 | 162 |
-| Manager | 30 | 6 | 0 | 0 | 10 | 0 | 15 | 61 |
+### 容量规划
+
+Next Sprint 包含 172 items，其中 165 Todo、1 Done。
+
+按类型分布（预计）：
+- EPIC: 40 个 P0 EPIC（Phase 0 遗留 + Next 原生）
+- FEA: 大量 P2 FEA 将从 Phase 1 Skeleton 提前拉入
+- BUG: 应从 138 个 P1 BUG 中拉入一批
+
+### 建议 Sprint 目标
+
+**目标 1: P0 EPIC 推进** — 完成 Next Sprint 的 40 个 P0 EPIC 的设计评审和初始实现。
+
+关键 EPIC 分组：
+
+**Group A: 数据层重构** (Claude-D 主导)
+- TP/PP 冗余消除
+- PP 性能调优
+- Thrust/CUB → libcu++
+- 数据管道越界保护
+
+**Group B: 计算基础** (Claude-A 主导)
+- Extended Floating-Point
+- Hopper Cluster
+- Fork/Join Ranges
+- Atomics 改进
+
+**Group C: common 算法扩展** (全员参与)
+- 14 个 common EPIC 按子领域分配到 6 个 Claude 实例
+- 每实例 2-3 个 EPIC，避免单点瓶颈
+
+**Group D: 工具链** (Claude-E + Claude-C)
+- CI 基准测试 MVP
+- 第三方测试集成
+- 文档重构
+
+**目标 2: BUG 消灭** — 从 138 个 P1 BUG 中消灭至少 30 个。
+
+**目标 3: Triage 清零** — 55 个 Needs Triage 项全部分类完毕。
 
 ---
 
-## 看板度量（每 Sprint 跟踪）
+## 六、Sprint 度量指标
 
-| 度量 | 计算方式 | S0 目标 | S3 目标 | S12 目标 |
-|------|---------|---------|---------|----------|
-| 吞吐量 | Done items / Sprint | 80 | 60 | 100 |
-| 阻塞率 | Blocked / Total Active | < 5% | < 2% | 0% |
-| P0 进度 | P0 Done / P0 Total | 0% | 40% | 100% |
-| P1 BUG 存量 | Open P1 BUGs | 138 | 80 | 0 |
-| PRD 完整率 | Active items with body > 1000 chars | 20% | 50% | 90% |
-| 分诊债务 | Needs Triage count | 0 | 0 | 0 |
+### 建议追踪的 KPI
+
+| 指标 | 当前值 | 目标值 | 说明 |
+|------|--------|--------|------|
+| Sprint Done 率 | 0% | >30% | 必须有产出闭环 |
+| Review → Done 转化率 | 0/202 | >50% | 打通 Review 瓶颈 |
+| Blocked 项数 | 26 | 0 | Phase 0 退出标准 |
+| Needs Triage 项数 | 55 | 0 | 需求管理健康度 |
+| P1 BUG 存量 | 138 | <110 | 每 Sprint 消灭 20%+ |
+| Claude 实例负载标准差 | 极高 | 降低 50% | 均衡分配 |
+
+### Sprint 回顾检查清单
+
+每个 Sprint 结束时应回答：
+1. 有多少项从 In Review 流转到 Done？阻塞 Review 的原因是什么？
+2. 新增 Blocked 项是否超过解除的 Blocked 项？
+3. 是否有新的 EPIC 级需求产生？是否影响路线图？
+4. Claude 实例间的工作量差异是否在收窄？
+5. 是否有 Needs Triage 项超过 2 周未处理？
+
+---
+
+## 七、里程碑检查点
+
+| 检查点 | 时机 | 通过标准 |
+|--------|------|---------|
+| CP0: Phase 0 退出 | 当前 Sprint 结束 | 13 个 EPIC Done, 0 Blocked, Review 堆积 <50 |
+| CP1: Phase 1 中期 | Next Sprint 中间 | 20 个 EPIC In Progress, BUG 消灭 30+, Triage 清零 |
+| CP1.5: Phase 1 退出 | Next Sprint 结束 | 40 个 EPIC Done 或 In Review, API surface 草案冻结 |
+| CP2: Skeleton 分批 | Phase 2 启动前 | 955 项分为 ≤4 批次, 每批有独立里程碑 |
+| CP3: 集成验证 | Phase 3 启动时 | 端到端 pub/sub 通路验证, needle-tools 原型 |

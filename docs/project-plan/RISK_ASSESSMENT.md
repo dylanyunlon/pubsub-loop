@@ -1,204 +1,251 @@
 # pub/sub-loop 风险评估报告
 
-> 生成时间：2026-07-10 | 数据源：1626 PRDs 全量分析
+> 基于 1626 个 PRD 全量分析 · 生成日期: 2026-07-10
 
 ---
 
-## 一、风险总览
+## 风险总览
 
-| 风险等级 | 数量 | 说明 |
-|---------|------|------|
-| 🔴 严重 | 5 | 可能导致项目交付失败 |
-| 🟡 高 | 6 | 显著影响进度或质量 |
-| 🟢 中 | 4 | 需关注但可控 |
-
----
-
-## 二、严重风险（🔴）
-
-### R1: transport 模块 70% 条目未分诊
-
-**现象**：transport 共 30 个 PRD，其中 21 个处于 Needs Triage 状态（70%）。transport 是个体间状态传输的唯一路径，承载 3 个 P0 EPIC（统一传输后端、零拷贝传输、内存池路线图），且被 4 个上层模块直接依赖。
-
-**影响**：transport 分诊不完成，无法确认 P0 EPIC 的子任务拆分是否完整，Phase 1A 的里程碑无法锁定。
-
-**缓解措施**：
-- 立即由 Manager 主持 transport 模块全量分诊会议
-- 将 21 个 Needs Triage 项在 1 个工作日内完成优先级和 Sprint 标注
-- 识别哪些是 P0 EPIC 的子任务，哪些可降为 P3
-
-**责任人**：Manager + Claude-D
+| ID | 风险 | 等级 | 概率 | 影响 | 当前状态 |
+|----|------|------|------|------|----------|
+| R1 | P1 BUG 积压失控 | 🔴 高 | 已发生 | 质量/进度 | 未缓解 |
+| R2 | Claude-D/E 工作负载过载 | 🔴 高 | 已发生 | 进度 | 未缓解 |
+| R3 | transport 模块枢纽风险 | 🔴 高 | 高 | 架构 | 进行中 |
+| R4 | Blocked 项级联阻塞 | 🟡 中 | 已发生 | 进度 | 部分缓解 |
+| R5 | Needs Triage 需求黑洞 | 🟡 中 | 高 | 范围 | 未缓解 |
+| R6 | Skeleton 阶段实现估算不足 | 🟡 中 | 高 | 进度 | 未评估 |
+| R7 | 跨平台兼容性 | 🟡 中 | 中 | 技术 | 进行中 |
+| R8 | API 不稳定导致返工 | 🟡 中 | 中 | 进度/质量 | 未缓解 |
+| R9 | needle-tools 集成风险 | 🟢 低 | 中 | 交付 | 未启动 |
+| R10 | 文档债务 | 🟢 低 | 已发生 | 可维护性 | 部分缓解 |
 
 ---
 
-### R2: task 和 event 模块定义严重不足
+## 风险详细分析
 
-**现象**：task 模块仅 2 个 PRD，event 模块仅 1 个 PRD，但 task 被 15 个模块依赖（所有模块中最高），event 被 3 个模块依赖。
+### R1: P1 BUG 积压失控 🔴
 
-**影响**：task 作为协程任务抽象，其接口稳定性直接影响 scheduler、data、transport 等核心模块。当前 2 个 PRD 远不足以定义完整的任务生命周期、取消语义、错误传播机制。如果后期发现接口设计缺陷，修改成本将波及 15 个模块。
+**现状**: 138 个 P1 BUG 全部处于 Current Sprint，但无一进入 Done。
 
-**缓解措施**：
-- 立即补充 task 模块的接口设计 PRD（建议新增 8-12 个 FEA 级 PRD）
-- 对 event 模块同样补充定义（建议新增 3-5 个 PRD）
-- 在 Phase 1A 开始前锁定 task 和 event 的公开 API
+**数据佐证**:
+- P1 BUG 总数: 138（占全部 BUG 的 89.6%）
+- 分布模块: common (最多)、tools、io、base、data
+- 当前 Sprint 完成率: 0/138 = 0%
+- P0 BUG: 0 个（说明 BUG 都在 P1 堆积，未做二次分级）
 
-**责任人**：Manager + Claude-A
+**影响分析**:
+- 技术债每个 Sprint 持续累积，修复成本随代码变更线性增长
+- BUG 可能阻塞 Phase 2 实现阶段的模块集成
+- 部分 BUG 涉及编译错误（如 `std::string + tensor_parallel::tuple` 编译失败），直接阻塞开发
 
----
-
-### R3: 完成率极低（0.25%），阻塞项持续累积
-
-**现象**：1626 个 PRD 中仅 4 个 Done（0.25%），26 个 Blocked，55 个 Needs Triage。Current Sprint 的 467 项中，仍有 10 项 Todo 未启动、26 项 Blocked。
-
-**影响**：按当前速度，项目无法在合理时间内交付。Blocked 项如不处理会形成连锁阻塞——当前 blocked 集中在 common（12）、Claude-E（10）、Claude-D（9），这两个 Agent 恰好是负载最重的（各 550+ 项）。
-
-**缓解措施**：
-- 设立每日 stand-up：清点 blocked 项，区分"等待外部"和"可内部解决"
-- 对"等待外部依赖"的 blocked 项（如依赖 libcu++ 发布），设置明确超时并准备替代方案
-- 将 Claude-E 和 Claude-D 的部分任务转移给 Claude-A/G/C
-
-**责任人**：Manager
+**缓解建议**:
+1. 对 138 个 P1 BUG 做二次分级：将编译阻塞类提升至 P0，将文档类降级至 P2
+2. 每 Sprint 固定 20% 产能用于 BUG 修复（约 90 项/Sprint 的 18 项）
+3. 指定 Claude-B（当前仅 22 项）为 BUG 消灭专责实例
 
 ---
 
-### R4: P0 EPIC 中 36 项仍为 Todo，未启动
+### R2: Claude-D/E 工作负载过载 🔴
 
-**现象**：56 个 P0 项中，36 个状态为 Todo（Next Sprint），仅 13 个 In Progress，1 个 In Review。这些 P0 EPIC 覆盖：common 算法标准化（14 个）、data 管道安全性（3 个）、base 底层能力（4 个）、tools CI/文档（7 个）、io Python 暴露（2 个）等。
+**现状**: 两个实例承载了全量 PRD 的 67.5%。
 
-**影响**：P0 定义为"核心架构，阻塞其他工作"。36 个 P0 未启动意味着项目核心架构仍有大量空白。特别是 `data pipeline must not invoke user ops on out-of-bounds message buffers` 这种安全性 EPIC 未启动，可能导致后期大规模返工。
+**数据佐证**:
 
-**缓解措施**：
-- 对 36 个 P0 Todo 逐一评审：是否真正 P0？能否降级？
-- 对确认 P0 的项，按依赖关系排入 Sprint 1-3
-- 安全类 EPIC 优先于性能优化类 EPIC
+| 实例 | 当前 Sprint | 全量 | 人均期望 (均分) | 超出倍数 |
+|------|------------|------|----------------|---------|
+| Claude-D | 133 | 546 | 232 | 2.35x |
+| Claude-E | 169 | 551 | 232 | 2.37x |
+| Claude-A | 82 | 293 | 232 | 1.26x |
+| Claude-G | 37 | 106 | 232 | 0.46x |
+| Claude-B | 22 | 81 | 232 | 0.35x |
+| Claude-C | 13 | 38 | 232 | 0.16x |
 
-**责任人**：Manager + 对应 Claude Agent
+**影响分析**:
+- Claude-D 同时负责 data、scheduler、common 三个核心模块的算法 EPIC，任一阻塞即影响关键路径
+- Claude-E 同时负责 component、tools、io、base 四大模块，跨模块上下文切换成本高
+- Claude-B/C/G 共承载 225 项（13.8%），严重闲置
 
----
-
-### R5: PRD 文档完整度低——83.6% 需细化
-
-**现象**：1626 个 PRD 中，1359 个（83.6%）body 长度 < 1000 字符，属于"需细化"级别。仅 89 个（5.5%）达到完整 PRD 标准（> 5000 字符）。
-
-**影响**：不充分的 PRD 导致实现歧义、返工、模块间接口不匹配。尤其是 Phase 1: Skeleton 的 955 项中，大量是粗粒度描述，进入实现阶段时需要大幅补充细节。
-
-**缓解措施**：
-- 对 P0/P1 项强制要求完整 PRD（含接口定义、验收标准、依赖声明）
-- P2/P3 项可保持骨架状态，进入 Current Sprint 前补充
-- 建立 PRD 模板，确保每个 PRD 包含：问题描述、接口签名、验收标准、依赖模块、估时
-
-**责任人**：Manager
+**缓解建议**:
+1. 将 Claude-D 的 common 模块 P3 项（~200 项）分配给 Claude-G 和 Claude-B
+2. 将 Claude-E 的 tools 模块 P3 项（~150 项）分配给 Claude-C 和 Claude-B
+3. 建立跨实例 Review 机制，避免单点知识孤岛
 
 ---
 
-## 三、高风险（🟡）
+### R3: transport 模块枢纽风险 🔴
 
-### R6: 138 个 P1 BUG 未修复
+**现状**: transport 是系统耦合度最高的模块，引用 7 个其他模块，被 5 个模块引用。
 
-所有 154 个 BUG 中，138 个为 P1（占 89.6%），0 个已修复。P1 BUG 集中在 common（45）、tools（36）、io（30）。编译错误、算法正确性问题如不修复，会阻塞 FEA 开发。
+**数据佐证**:
+- transport → data: 7 次跨模块引用
+- transport → scheduler: 6 次
+- transport → message: 5 次
+- transport → component: 4 次
+- transport → profiler: 3 次
+- 3 个 P0 EPIC 同时进行中，任一延期影响全系统
 
-**缓解**：每个 Sprint 分配 20% 产能专门修 BUG，优先修复阻塞 P0 EPIC 的 BUG。
+**关键依赖链**:
+```
+transport memory_pool → transport 统一后端 → transport 零拷贝 → data 100K 缓冲
+```
+此链条中任一节点延期，后续全部级联延期。
 
----
-
-### R7: Claude-E 和 Claude-D 负载严重不均
-
-Claude-E（551 项）和 Claude-D（546 项）合计承担 67.5% 的工作量，而 Claude-C（38 项）和 Claude-B（81 项）相对空闲。负载不均导致瓶颈集中在 E/D，两者的 blocked 项也最多（E:10, D:9）。
-
-**缓解**：重新平衡分配，将 common/tools 的 P3 骨架任务批量转移给 Claude-B/C/G。
-
----
-
-### R8: transport ↔ data 循环依赖
-
-transport 依赖 data（缓冲管理），data 依赖 transport（底层传输）。这种循环依赖会导致接口变更相互影响，增加集成风险。
-
-**缓解**：定义明确的接口边界层（`transport::BufferPolicy` 抽象），打破编译时循环依赖。
-
----
-
-### R9: 展示层（L3）PRD 缺失
-
-State Bridge（L3-001）和 DeltaFrame 协议（L3-002）仅有标题级描述，尚未拆分为 FEA/TASK。needle-tools 集成完全没有 PRD。
-
-**缓解**：Phase 1A 末尾开始补充 L3 层 PRD，预估需新增 15-25 个 FEA 级条目。
+**缓解建议**:
+1. transport 的 3 个 P0 EPIC 必须明确完成顺序（memory_pool → 统一后端 → 零拷贝）
+2. 定义 transport 抽象层接口并冻结，允许 data/scheduler 模块基于接口并行开发
+3. 为 transport 建立独立集成测试套件，每次变更自动验证下游模块
 
 ---
 
-### R10: Phase 2: Implementation 29/32 项 Needs Triage
+### R4: Blocked 项级联阻塞 🟡
 
-Phase 2 的 32 个条目中，29 个 Needs Triage，说明实现阶段的工作定义几乎为零。
+**现状**: 26 个 Blocked 项分布在 5 个模块，部分形成阻塞链。
 
-**缓解**：Phase 1 中期（Sprint 6 左右）开始系统性定义 Phase 2 内容。
+**数据佐证**:
 
----
+| 模块 | Blocked 数 | 优先级 | 典型阻塞原因 |
+|------|-----------|--------|-------------|
+| base | 多项 | P1 🟡 | pool_memory_resource 可行性未评估 |
+| common | 多项 | P1/P3 | 编译兼容性问题 |
+| tools | 多项 | P3 | 文档链接失效、API 文档不匹配 |
+| io | 多项 | P1 🟡 | NVTX v2 与 PipelineParallel 编译冲突 |
+| transport | 多项 | 隐含 | 等待 memory_pool EPIC |
 
-### R11: 跨平台支持的验证覆盖不足
+**级联风险**: base Blocked → transport 延期 → data 延期 → scheduler 延期 → 整个 Phase 0 延期。
 
-mainboard 跨平台引导覆盖 x86/ARM RK3568/RT-Thread 三个平台，但 CI 中没有 ARM 和 RT-Thread 的自动化测试。
-
-**缓解**：Sprint 3 开始搭建 QEMU-based ARM CI，RT-Thread 可用模拟器验证。
-
----
-
-## 四、中等风险（🟢）
-
-### R12: 大规模个体（100K+）的性能验证推迟
-
-100K 个体的背压和分块传递是 P0 EPIC，但性能验证需要完整的传输+数据+调度管道。在 Phase 1 末尾才能开始真实压力测试，发现问题后修改成本高。
-
-**缓解**：Sprint 2 开始用 mock 传输层进行 10K 级预验证，尽早暴露瓶颈。
+**缓解建议**:
+1. 立即对 base 模块 `pool_memory_resource` 做技术 Spike（1-2 天），产出 Go/No-Go 决策
+2. io 模块 NVTX 编译冲突升级为 P0 处理
+3. 每日 Standup 中增加 Blocked 项专项检查
 
 ---
 
-### R13: 文档和 CI 工具链的 P0 EPIC 偏多
+### R5: Needs Triage 需求黑洞 🟡
 
-tools 模块有 7 个 P0 EPIC，但工具链通常不应是 P0（不阻塞核心功能）。可能存在优先级膨胀。
+**现状**: 55 个 PRD 处于 Needs Triage 状态，无人认领。
 
-**缓解**：评审 tools 的 P0 EPIC，考虑将文档类降为 P1，仅保留 CI 测试/sanitizer 为 P0。
+**分布**:
+- transport: 21 项（最多，且包含 EPIC 级需求）
+- tools: 20 项
+- common: 6 项
+- base: 5 项
 
----
+**影响分析**:
+- transport 有 21 个未分类项，可能包含与当前 3 个 P0 EPIC 冲突或重复的需求
+- 部分 Needs Triage 是 EPIC 级别（如 TMA Exposure、异构范围支持、Docs Overhaul），可能影响路线图规划
 
-### R14: 多语言混合（Mixed 占 86.6%）增加构建复杂度
-
-1408 个 PRD 标记为 Mixed 语言，实际涉及 C++/CUDA/Python/LaTeX 混合。构建系统需处理多工具链集成。
-
-**缓解**：tools 模块的 CI 强化 EPIC 需要覆盖多语言构建矩阵。
-
----
-
-### R15: 无明确的发布计划和版本策略
-
-1626 个 PRD 中没有发现版本号、发布日期、或里程碑截止时间的定义。所有时间线都是相对的（Current/Next/Phase 1/Phase 2），缺乏绝对日期约束。
-
-**缓解**：在 ROADMAP 中补充绝对时间线，建议每 2 周一个 Sprint，Phase 1 目标 24 周。
+**缓解建议**:
+1. Manager 实例（当前仅 11 项，其中 10 项 Todo）应将 Triage 作为第一优先级
+2. 所有 transport 模块的 Needs Triage 项必须在 Phase 0 结束前完成分类
+3. 设定规则：超过 2 周未 Triage 的项自动标记为 P3 并分配到 Phase 1: Skeleton
 
 ---
 
-## 五、风险热力图
+### R6: Skeleton 阶段实现估算不足 🟡
+
+**现状**: 955 个 PRD 标记为 "Phase 1: Skeleton"，全部 Todo，无任何实现进展。
+
+**数据佐证**:
+- 955 项占总量的 58.7%
+- 主要集中在 common (~300+)、tools (~250+)、io (~120+)、base (~100+)
+- 无一项有实现进度估算或工时标注
+
+**影响分析**:
+- 当 Phase 0 的 13 个 EPIC 完成后，团队将面对一个 955 项的 "实现悬崖"
+- 缺乏分批策略可能导致 Phase 2 变成一个无限期的 Sprint
+
+**缓解建议**:
+1. 对 955 项按模块和依赖关系分为 3-4 个子批次
+2. 每批次设定独立里程碑和退出标准
+3. 优先实现被 P0/P1 项依赖的 Skeleton 项
+
+---
+
+### R7: 跨平台兼容性 🟡
+
+**现状**: 系统需支持 x86 服务器、ARM RK3568、RT-Thread 三类平台。
+
+**风险点**:
+- mainboard 模块仅 3 个 PRD，相对于三平台适配的复杂度严重不足
+- 部分 base 模块特性（Hopper Cluster、SM120 调优）仅适用于特定 GPU 架构
+- RT-Thread 作为 RTOS 与 Linux 环境的资源模型差异巨大
+
+**缓解建议**:
+1. 尽早建立三平台 CI 矩阵
+2. 明确 RT-Thread 平台的功能子集（不要求全特性支持）
+3. mainboard 模块 PRD 需补充平台检测、降级策略、错误恢复的详细需求
+
+---
+
+### R8: API 不稳定导致返工 🟡
+
+**现状**: world::std 和 pub/sub API 仍在活跃开发中，14 个 common EPIC 在 Phase 1 将大幅改变 API surface。
+
+**风险点**:
+- Phase 0 开发的上层模块代码可能因 Phase 1 API 变更而需要大规模返工
+- 361 个 P2 FEA 中大量依赖 common 模块 API，API 变更的连锁影响巨大
+
+**缓解建议**:
+1. Phase 0 结束时冻结 Layer 0-1 的公开 API（base、transport 接口）
+2. Phase 1 结束时冻结 Layer 2 API（data、common、scheduler 接口）
+3. 上层模块开发基于接口而非实现，降低返工成本
+
+---
+
+### R9: needle-tools 集成风险 🟢
+
+**现状**: 展示层集成尚未启动，当前无相关 PRD。
+
+**风险点**:
+- Web 端 GLB/3D 渲染对状态更新的实时性有严格要求
+- 1626 个 PRD 中未见 needle-tools 相关需求，集成方案可能缺失
+
+**缓解建议**:
+1. Phase 2 期间启动 needle-tools 集成原型
+2. 定义 "从个体状态发布到 Web 端渲染帧" 的端到端延迟 SLA
+
+---
+
+### R10: 文档债务 🟢
+
+**现状**: tools 模块有多项文档相关 BUG 和 FEA（链接失效、API 文档不匹配、Contributing 指南过时）。
+
+**缓解建议**:
+1. Phase 1 的 "Docs Overhaul" 和 "diataxis" EPIC 可覆盖此风险
+2. 建立文档与代码的自动同步检查（CI 中校验文档链接和 API 签名）
+
+---
+
+## 风险热力图
 
 ```
-影响 ↑
-高    │  R1(transport)   R3(完成率)    R4(P0未启动)
-      │  R2(task/event)  R5(PRD质量)
-      │
-中    │  R6(P1 BUG)      R7(负载不均)  R8(循环依赖)
-      │  R9(L3缺失)      R10(Phase2)   R11(跨平台CI)
-      │
-低    │  R12(100K验证)   R13(P0膨胀)   R14(多语言)
-      │  R15(无发布计划)
-      └──────────────────────────────────────────→ 概率
-          低              中              高
+        低概率         中概率         高概率        已发生
+      ┌────────────┬────────────┬────────────┬────────────┐
+高影响 │            │  R3 枢纽   │            │ R1 BUG积压 │
+      │            │  R8 API    │            │ R2 过载    │
+      ├────────────┼────────────┼────────────┼────────────┤
+中影响 │            │  R7 跨平台 │ R5 Triage  │ R4 Blocked │
+      │            │  R9 集成   │ R6 Skeleton│            │
+      ├────────────┼────────────┼────────────┼────────────┤
+低影响 │            │            │            │ R10 文档   │
+      └────────────┴────────────┴────────────┴────────────┘
 ```
 
 ---
 
-## 六、Top 5 行动项
+## 综合建议
 
-| 优先级 | 行动 | 风险 | 截止 |
-|--------|------|------|------|
-| 1 | transport 模块全量分诊 | R1 | Week 1 |
-| 2 | task/event 模块接口补充 | R2 | Week 2 |
-| 3 | 26 个 Blocked 项逐一处理 | R3 | Week 1 |
-| 4 | P0 Todo 项评审和排期 | R4 | Week 2 |
-| 5 | Claude 负载重新平衡 | R7 | Week 1 |
+**立即行动（本周内）**:
+1. 对 138 个 P1 BUG 做二次分级，将编译阻塞类提至 P0
+2. 启动 base 模块 pool_memory_resource 技术 Spike
+3. Manager 完成 55 个 Needs Triage 项的分类
+
+**短期行动（Phase 0 结束前）**:
+1. 重新均衡 Claude 实例工作负载
+2. 冻结 transport 抽象层接口
+3. 清零 26 个 Blocked 项
+
+**中期行动（Phase 1 期间）**:
+1. 将 955 个 Skeleton 项分批规划
+2. 建立三平台 CI 矩阵
+3. 启动 needle-tools 集成原型

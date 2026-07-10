@@ -1,240 +1,201 @@
-# pub/sub-loop 模块依赖关系图
+# pub/sub-loop 模块依赖图
 
-> 生成时间：2026-07-10 | 分析方法：P0+P1 PRD body 跨模块引用提取
+> 基于 1626 个 PRD 正文中的跨模块引用分析 · 生成日期: 2026-07-10
 
 ---
 
-## 一、依赖关系总览
+## 一、系统分层架构
 
-以下依赖关系通过分析所有 P0（56 项）和 P1（158 项）PRD 的描述文本，提取跨模块引用得出。箭头方向为 **A → B 表示 A 依赖 B**。
-
-```mermaid
-graph TD
-    subgraph "Layer 0: 基础设施（被依赖最多）"
-        task["task (2)"]
-        io["io (179)"]
-        message["message (22)"]
-        profiler["profiler (39)"]
-    end
-
-    subgraph "Layer 1: 核心运行时"
-        base["base (173)"]
-        time["time (26)"]
-        event["event (1)"]
-        tools["tools (374)"]
-    end
-
-    subgraph "Layer 2: 传输与调度"
-        transport["transport (30)"]
-        scheduler["scheduler (61)"]
-        croutine["croutine (14)"]
-        data["data (90)"]
-    end
-
-    subgraph "Layer 3: 应用层"
-        common["common (494)"]
-        component["component (41)"]
-        context["context (26)"]
-        node["node (12)"]
-        mainboard["mainboard (3)"]
-        service["service (3)"]
-    end
-
-    transport --> base
-    transport --> common
-    transport --> component
-    transport --> context
-    transport --> data
-    transport --> event
-    transport --> io
-    transport --> message
-    transport --> node
-    transport --> profiler
-    transport --> scheduler
-    transport --> service
-    transport --> service_discovery
-    transport --> task
-    transport --> time
-
-    data --> io
-    data --> message
-    data --> profiler
-    data --> scheduler
-    data --> task
-    data --> time
-    data --> tools
-    data --> transport
-
-    common --> base
-    common --> component
-    common --> context
-    common --> data
-    common --> event
-    common --> io
-    common --> message
-    common --> profiler
-    common --> scheduler
-    common --> task
-    common --> time
-    common --> tools
-    common --> transport
-
-    scheduler --> croutine
-    scheduler --> io
-    scheduler --> message
-    scheduler --> profiler
-    scheduler --> task
-    scheduler --> tools
-
-    component --> io
-    component --> message
-    component --> profiler
-    component --> task
-    component --> tools
-
-    mainboard --> io
-    mainboard --> task
-    mainboard --> transport
-
-    service --> context
-    service --> io
-    service --> message
-    service --> profiler
-    service --> task
-
-    base --> io
-    base --> message
-    base --> profiler
-    base --> task
-    base --> transport
-
-    context --> io
-    context --> message
-    context --> profiler
-    context --> task
-
-    croutine --> io
-    croutine --> message
-    croutine --> profiler
-    croutine --> task
-
-    time --> io
-    time --> message
-    time --> profiler
-    time --> task
-
-    tools --> base
-    tools --> event
-    tools --> io
-    tools --> message
-    tools --> plugin_manager
-    tools --> profiler
-    tools --> record
-    tools --> task
-    tools --> time
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        展示层 (needle-tools / Web)                   │
+│                        GLB/3D 渲染 · 个体可视化                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐    │
+│  │  node    │  │ context  │  │ profiler │  │   statistics    │    │
+│  │ (12 PRD) │  │ (26 PRD) │  │ (39 PRD) │  │    (4 PRD)     │    │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └───────┬────────┘    │
+│       │              │              │                │              │
+│  ┌────▼──────────────▼──────────────▼────────────────▼────────┐    │
+│  │                    component (41 PRD)                       │    │
+│  │         个体能力集 · DynamicComponentBase · 插件管理          │    │
+│  └──────────────────────────┬────────────────────────────────┘    │
+│                              │                                     │
+│  ┌───────────────────────────▼────────────────────────────────┐    │
+│  │                    common (494 PRD)                         │    │
+│  │    world::std 并行算法 · TensorParallel · PipelineParallel   │    │
+│  └──────┬──────────────┬───────────────────┬─────────────────┘    │
+│         │              │                   │                       │
+│  ┌──────▼─────┐  ┌─────▼──────┐  ┌────────▼──────┐               │
+│  │  data      │  │ scheduler  │  │    io          │               │
+│  │ (90 PRD)   │  │ (61 PRD)   │  │  (179 PRD)    │               │
+│  │ 状态融合    │  │ CRoutine   │  │  序列化/流     │               │
+│  │ 世界查询    │  │ 工作窃取    │  │  PTX 绑定     │               │
+│  └──────┬─────┘  └─────┬──────┘  └───────────────┘               │
+│         │              │                                           │
+│  ┌──────▼──────────────▼──────────────────────────────────────┐    │
+│  │                  transport (30 PRD)                          │    │
+│  │     RTPS · 共享内存 · memory_pool · 零拷贝传输                │    │
+│  └──────────────────────────┬────────────────────────────────┘    │
+│                              │                                     │
+│  ┌───────────────────────────▼────────────────────────────────┐    │
+│  │                     base (173 PRD)                          │    │
+│  │     原子操作 · 浮点类型 · 内存分配器 · mdspan · Hopper 支持    │    │
+│  └────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐    │
+│  │mainboard │  │  tools   │  │  time    │  │    croutine     │    │
+│  │ (3 PRD)  │  │(374 PRD) │  │ (26 PRD) │  │   (14 PRD)     │    │
+│  │ 世界引导  │  │ CI/文档  │  │ 异步模型  │  │   协程原语      │    │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘    │
+├─────────────────────────────────────────────────────────────────────┤
+│  辅助模块: message(22) · logger(3) · parameter(4) · record(4)      │
+│            service(3) · service_discovery(2) · blocker(2)           │
+│            task(2) · event(1) · sysmo(4) · plugin_manager(2)       │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 二、被依赖度排名（关键基础模块）
+## 二、跨模块引用矩阵
 
-一个模块被越多上层模块依赖，其稳定性和优先级就越关键。
+基于 PRD 正文中 `module::` 命名空间引用和显式依赖声明提取：
 
-| 排名 | 模块 | 被依赖次数 | 自身 PRD 数 | 稳定性风险 |
-|------|------|-----------|------------|-----------|
-| 1 | task | 15 | 2 | ⚠️ 极高：仅 2 个 PRD 却被 15 个模块依赖，定义不充分 |
-| 2 | io | 14 | 179 | 中：PRD 充足但 162 项仍 Todo |
-| 3 | profiler | 13 | 39 | 中：被广泛依赖但非阻塞路径 |
-| 4 | message | 13 | 22 | ⚠️ 高：状态类型和序列化是传输基础，仅 22 PRD |
-| 5 | tools | 7 | 374 | 低：工具链依赖为构建时依赖 |
-| 6 | time | 5 | 26 | 中：时间系统影响调度和数据管道 |
-| 7 | transport | 4 | 30 | ⚠️ 高：核心传输层，21 项 Needs Triage |
-| 8 | event | 3 | 1 | ⚠️ 极高：仅 1 个 PRD 却被 3 模块依赖 |
-| 9 | scheduler | 3 | 61 | 低：进展健康（29 In Progress） |
-| 10 | base | 3 | 173 | 低：体量大，进展稳定 |
+```
+                base  transport  data  scheduler  message  component  croutine  node  profiler  time
+base              ·                                                                              
+transport         ✦✦       ·      ✦✦✦✦   ✦✦✦      ✦✦✦      ✦✦                  ✦      ✦✦✦         
+data              ✦                ·      ✦                                                      
+scheduler                                 ·                            ✦                          
+common           ✦✦✦     ✦✦       ✦✦✦    ✦✦✦                ✦         ✦                    ✦✦✦   
+profiler                 ✦✦       ✦       ✦                            ✦                          
+node                              ✦                                    ·                          
+statistics               ✦                                                                       
+```
+
+✦ = 1-2 次引用 | ✦✦ = 3-4 次 | ✦✦✦ = 5-6 次 | ✦✦✦✦ = 7+ 次
+
+**最密集依赖路径**: transport → data (7次), transport → scheduler (6次), common → time (6次), common → scheduler (6次)
 
 ---
 
-## 三、关键依赖路径分析
+## 三、EPIC 级依赖链
 
-### 路径 1：个体状态发布 → 世界快照（最关键路径）
-
-```
-individual publishes state
-    → message (序列化 IndividualState)
-    → transport (RTPS / 共享内存传输)
-        → base (内存对齐、原子操作)
-        → scheduler (dispatch 调度)
-    → data (ChannelWriter → 融合引擎)
-        → time (时间戳排序)
-    → WorldView (一致世界快照)
-```
-
-**阻塞风险**：transport 模块 21/30 项为 Needs Triage，直接威胁此路径。
-
-### 路径 2：世界快照 → Web 渲染
+### 关键路径 1: 传输统一链
 
 ```
-data::WorldView
-    → [L3-001] State Bridge (WebSocket DeltaFrame)
-    → [L3-002] DeltaFrame 二进制协议
-    → needle-tools (GLB/3D 渲染)
+[EPIC] transport/memory_pool roadmap (P0, transport)
+    │
+    ├──► [EPIC] Unify RTPS + SHM backends (P0, transport)
+    │        │
+    │        └──► [EPIC] Zero-copy async transfer (P0, transport)
+    │                 │
+    │                 └──► [EPIC] Large-population buffering 100K+ (P0, data)
+    │                          │
+    │                          └──► [EPIC] Top-k priority selection (P0, data)
+    │
+    └──► [FEA] Pluggable memory allocator (P2, base)
+              depends on base atomics
 ```
 
-**阻塞风险**：L3-001 和 L3-002 均为 Todo 状态，依赖 Phase 1A 完成。
-
-### 路径 3：跨平台初始化
+### 关键路径 2: 调度融合链
 
 ```
-mainboard (world-bootstrap 脚本)
-    → transport (检测并选择传输后端)
-    → io (加载个体配置)
-    → node (按依赖序启动个体节点)
-    → scheduler (启动 tick-loop)
+[EPIC] WSPRO warp-scan scheduler (P0, scheduler)
+    │
+    ├──► [EPIC] ChannelWriter pub/sub dispatch (P0, data)
+    │        │
+    │        └──► [EPIC] Multi-source state fusion engine (P0, data)
+    │
+    └──► [EPIC] PipelineParallel Performance Tuning (P0, scheduler)
+              │
+              └──► [EPIC] Use work stealing in all PP algorithms (P0, common)
 ```
 
-**阻塞风险**：mainboard 3 项全 In Progress，但依赖的 transport 分诊未完成。
-
----
-
-## 四、循环依赖风险
-
-| 循环 | 路径 | 严重度 |
-|------|------|--------|
-| transport ↔ data | transport 依赖 data（缓冲），data 依赖 transport（传输） | ⚠️ 需要明确接口边界 |
-| common ↔ transport | common 依赖 transport，transport 依赖 common | ⚠️ 需要抽象层打破 |
-| base ↔ transport | base 依赖 transport，transport 依赖 base | 中：base 为底层库，transport 依赖合理；反向依赖需检查 |
-
----
-
-## 五、构建顺序建议
-
-基于依赖拓扑排序，推荐以下模块构建顺序：
+### 关键路径 3: 计算基础链
 
 ```
-Round 1（无依赖/被依赖最多）: task, event, message, io, profiler
-Round 2（依赖 Round 1）:       base, time, tools
-Round 3（依赖 Round 1-2）:     transport, croutine, scheduler
-Round 4（依赖 Round 1-3）:     data, context, component
-Round 5（依赖 Round 1-4）:     common, node, service, mainboard
-Round 6（全栈集成）:           L3 State Bridge, needle-tools 集成
+[EPIC] Extended Floating-Point (P0, base)
+    │
+    ├──► [EPIC] Hopper Cluster support (P0, base)
+    │        │
+    │        └──► [EPIC] Tune PP Device primitives for SM120 (P0, common)
+    │
+    ├──► [EPIC] Atomics Improvements (P0, base)
+    │        │
+    │        └──► [EPIC] mdspan-based algorithms (P0, base)
+    │
+    └──► [EPIC] Fork/Join Parallel Ranges (P0, base)
+              │
+              └──► [EPIC] Port std parallel algorithms → world::std (P0, common)
+```
+
+### 关键路径 4: 平台适配链
+
+```
+[EPIC] Setup cross-platform world init container (P0, mainboard)
+    │
+    ├──► [EPIC] Component 平台分级暴露 (P0, component)
+    │        │
+    │        └──► [EPIC] 并发哈希表 → DynamicComponentBase (P0, component)
+    │
+    └──► [EPIC] Neuron Next async programming model (P0, time)
 ```
 
 ---
 
-## 六、模块健康度矩阵
+## 四、模块耦合度评估
 
-| 模块 | PRD 数 | Done | In Progress | Blocked | Needs Triage | 健康度 |
-|------|--------|------|-------------|---------|-------------|--------|
-| transport | 30 | 0 | 6 | 0 | 21 | 🔴 危险 |
-| task | 2 | 0 | 0 | 0 | 0 | 🔴 定义不足 |
-| event | 1 | 0 | 0 | 0 | 0 | 🔴 定义不足 |
-| message | 22 | 0 | 7 | 1 | 0 | 🟡 注意 |
-| data | 90 | 0 | 19 | 0 | 0 | 🟡 注意 |
-| io | 179 | 1 | 6 | 2 | 1 | 🟡 注意 |
-| scheduler | 61 | 0 | 29 | 0 | 0 | 🟢 健康 |
-| croutine | 14 | 0 | 11 | 0 | 0 | 🟢 健康 |
-| base | 173 | 1 | 28 | 2 | 5 | 🟢 健康 |
-| common | 494 | 2 | 42 | 12 | 6 | 🟡 注意 |
-| mainboard | 3 | 0 | 3 | 0 | 0 | 🟢 健康 |
-| component | 41 | 0 | 13 | 0 | 0 | 🟢 健康 |
+| 模块 | 被引用次数 | 引用他模块次数 | 耦合评级 | 风险说明 |
+|------|-----------|--------------|---------|---------|
+| transport | 高 (被 data/profiler/statistics 引用) | 极高 (引用 7 个模块) | 🔴 枢纽 | 传输层变更影响全链路 |
+| data | 高 (被 transport/common/node/profiler/tools 引用) | 中 | 🔴 枢纽 | 状态模型是全系统核心 |
+| common | 中 | 极高 (引用 7 个模块) | 🟡 扇出 | 算法库依赖广泛但单向 |
+| scheduler | 高 (被 transport/common/data/profiler 引用) | 低 | 🟡 被依赖 | 调度策略变更波及上层 |
+| base | 高 (被 transport/data/common 引用) | 无 | 🟢 叶子 | 稳定底层，变更可控 |
+| message | 中 (被 transport 引用 5 次) | 无 | 🟢 叶子 | 消息格式变更需谨慎 |
+
+---
+
+## 五、Blocked 项依赖分析
+
+当前 26 个 Blocked 项的模块分布和阻塞原因：
+
+| 模块 | Blocked 数 | 典型阻塞原因 |
+|------|-----------|-------------|
+| transport | 多项 | 等待 memory_pool 和统一后端 EPIC |
+| common | 多项 | 等待 base 模块 atomics/FP 改进 |
+| base | 多项 | 等待 pool_memory_resource 可行性评估 |
+| tools | 多项 | 等待上游 API 稳定 |
+| io | 多项 | 等待 NVTX/PipelineParallel 编译冲突解决 |
+
+**解除阻塞的推荐顺序**:
+1. base 模块 `pool_memory_resource` 评估 → 解除 base 阻塞
+2. transport `memory_pool` EPIC 推进 → 解除 transport 阻塞
+3. common 编译错误修复 (string + tuple) → 解除 common 阻塞
+4. io NVTX 冲突解决 → 解除 io 阻塞
+
+---
+
+## 六、建议的构建顺序
+
+基于依赖拓扑排序的最优构建序列：
+
+```
+Layer 0 (无外部依赖):  base · time · croutine · message · logger
+         │
+Layer 1 (依赖 Layer 0): transport · scheduler
+         │
+Layer 2 (依赖 Layer 1): data · io · common
+         │
+Layer 3 (依赖 Layer 2): component · context · profiler
+         │
+Layer 4 (依赖 Layer 3): node · mainboard
+         │
+Layer 5 (依赖 Layer 4): tools · statistics · sysmo
+         │
+Layer 6 (集成层):       needle-tools Web 渲染
+```
+
+同一 Layer 内的模块可以并行开发，跨 Layer 必须按序。
