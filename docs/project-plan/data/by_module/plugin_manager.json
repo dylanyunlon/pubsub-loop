@@ -1,0 +1,28 @@
+[
+ {
+  "title": "[FEA] Enforce fully-qualified individual-type names in plugin_manager registry to prevent type collisions across distributed world instances",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "plugin_manager",
+  "language": "Python",
+  "note": "",
+  "body_len": 894,
+  "has_deps": 0
+ },
+ {
+  "title": "[FEA] PluginManager新增find_individual_plugin_path接口——无需实例化即可定位动态个体类型库的磁盘路径",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P2 🟢",
+  "sprint": "Current",
+  "claude": "Claude-D",
+  "module": "plugin_manager",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 1131,
+  "has_deps": 0
+ }
+]

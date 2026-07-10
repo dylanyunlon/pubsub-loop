@@ -1,0 +1,74 @@
+=== pub/sub-loop 产品需求计划构建指令 ===
+
+发布者：项目负责人
+发布时间：2026-07-10
+目标：多个 Claude agent 各领一块模块，构建 NVIDIA/CCCL 级别的产品需求计划
+
+=== 项目本质 ===
+
+1. pub/sub-loop 是类区块链的世界模型个体系统，不是传统中间件
+2. 每个"个体"（individual）有自己的状态、位置、关系，在 pub/sub 循环中不断更新
+3. Cyber RT 提供持续的数据流和位置刷新能力
+4. 这 1626 个 Draft Issue 是产品需求文档（PRD），不是普通 issue
+
+=== 两层消费者 ===
+
+1. 内部决策系统（核心）— 大部分模块服务于此，后台系统
+2. Web 3D 可视化观测（额外最终产品）— 通过 needle-tools (github.com/needle-tools)
+   - 个体输出动态可以是 blender, needle 这个项目能在 web 上直接展示 GLB 等内容
+   - 不是所有模块都需要强行牵扯 web
+   - pub/sub-loop 也需要内部决策系统消费
+   - Web 3D 是额外的最终产品
+
+=== 质量标准 ===
+
+对标 NVIDIA/CCCL (github.com/NVIDIA/cccl) 的需求文档质量。参考：
+- [CUDAX] [CUCO] Use cuda::launch and thread hierarchies in cuco #9656
+- 包含：完整的 API surface inventory、依赖分析、migration strategy、code examples
+- 每个需求有：Description → Problem → Proposed Design → Dependencies → Sub-tasks → Acceptance Criteria → Activity
+
+=== 操作约束 ===
+
+- GitHub token: $GITHUB_TOKEN (环境变量)
+- 直接在 main 分支操作，不开新分支
+- 不使用 v2/v3 等版本后缀
+- Project #4 是唯一的需求管理界面
+- 完成后直接 push
+
+=== 数据文件位置 ===
+
+- docs/project-plan/data/all_items.json — 全部 1626 个 items 的完整数据
+- docs/project-plan/data/by_module/*.json — 按模块拆分的数据文件
+- docs/project-plan/data/by_sprint/*.json — 按 sprint 拆分的数据文件
+- docs/project-plan/data/all_items.csv — CSV 格式的概要数据
+
+=== 任务分配 ===
+
+每个 Claude agent 领取一个批次，对其中的 items 进行 CCCL 级别的需求细化。
+
+批次 1（大模块）: common (494) + tools (374) = 868 items
+批次 2（核心模块）: transport (30) + data (90) + scheduler (61) + croutine (14) = 195 items  
+批次 3（基础设施）: base (173) + io (179) = 352 items
+批次 4（上层模块）: component (41) + context (26) + time (26) + message (22) + node (12) = 127 items
+批次 5（辅助模块）: profiler (39) + 其他小模块 = 78 items
+
+=== 每个 agent 的工作流程 ===
+
+1. 读取对应 by_module/*.json 数据
+2. 对每个 item 评估其产品需求完整度
+3. 对需要细化的 item，生成 CCCL 级别的需求描述
+4. 通过 GitHub GraphQL API 更新 Project #4 中对应 item 的 body
+5. 生成该模块的需求总结报告，放入 docs/module-specs/
+
+=== GraphQL API 更新 item body 示例 ===
+
+mutation {
+  updateProjectV2DraftIssue(input: {
+    projectId: "<PROJECT_NODE_ID>"
+    draftIssueId: "<DRAFT_ISSUE_NODE_ID>" 
+    body: "<NEW_BODY_CONTENT>"
+  }) {
+    draftIssue { id title body }
+  }
+}
+

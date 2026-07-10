@@ -1,0 +1,41 @@
+[
+ {
+  "title": "[EPIC] Setup cross-platform world initialization container and individual bootstrap script infrastructure for embedded and server targets",
+  "type": "EPIC",
+  "status": "In Progress",
+  "priority": "P0 🔴",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "mainboard",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 816,
+  "has_deps": 1
+ },
+ {
+  "title": "[FEA] Declare inter-individual dependency graph in mainboard world-init package metadata for deterministic individual boot ordering",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "mainboard",
+  "language": "Python",
+  "note": "",
+  "body_len": 935,
+  "has_deps": 1
+ },
+ {
+  "title": "[FEA] Refactor CMake build system for modular individual type compilation and plugin discovery",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "mainboard",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 2788,
+  "has_deps": 1
+ }
+]

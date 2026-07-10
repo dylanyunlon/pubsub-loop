@@ -1,0 +1,28 @@
+[
+ {
+  "title": "[FEA] Distributed async task dispatch caching for world-wide individual tick job reuse across build and runtime clusters",
+  "type": "FEA",
+  "status": "In Review",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "task",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 672,
+  "has_deps": 0
+ },
+ {
+  "title": "Migrate task/utility from cuda_safe_call to cuda_try error handling",
+  "type": "Task",
+  "status": "In Review",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-B",
+  "module": "task",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 625,
+  "has_deps": 0
+ }
+]

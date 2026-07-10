@@ -1,0 +1,54 @@
+[
+ {
+  "title": "[FEA] Record模块个体状态快照导出时，二进制增量数据路径应相对于世界存档根目录自动解析",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "record",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 888,
+  "has_deps": 0
+ },
+ {
+  "title": "[FEA] Implement record::batch_snapshot batched world-state capture and replay pipeline for multi-individual position and data bulk recording",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-D",
+  "module": "record",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 717,
+  "has_deps": 0
+ },
+ {
+  "title": "[record] New single-pass world state stream deduplication and run-length encoding example for compacted playback",
+  "type": "Task",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "record",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 686,
+  "has_deps": 0
+ },
+ {
+  "title": "[FEA]: Add a `release()` method to `neuron.core.Buffer` to side-step the Python garbage collector",
+  "type": "FEA",
+  "status": "Todo",
+  "priority": "P2 🟢",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-A",
+  "module": "record",
+  "language": "Python",
+  "note": "",
+  "body_len": 676,
+  "has_deps": 0
+ }
+]

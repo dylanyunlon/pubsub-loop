@@ -1,0 +1,54 @@
+[
+ {
+  "title": "Add CI test coverage for pub/sub-loop world model on arm64 embedded targets (RK3568/RT-Thread) to validate individual state sync on hardware",
+  "type": "Task",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "sysmo",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 713,
+  "has_deps": 0
+ },
+ {
+  "title": "[FEA] Use NVML for additional diagnostics",
+  "type": "FEA",
+  "status": "Todo",
+  "priority": "P2 🟢",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-E",
+  "module": "sysmo",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 608,
+  "has_deps": 0
+ },
+ {
+  "title": "Detect if GPU is being used for graphical purposes",
+  "type": "Task",
+  "status": "Todo",
+  "priority": "P2 🟢",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-E",
+  "module": "sysmo",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 623,
+  "has_deps": 0
+ },
+ {
+  "title": "[FEA]: Investigate in-place sorting algorithms to reduce memory usage",
+  "type": "FEA",
+  "status": "Todo",
+  "priority": "P2 🟢",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-D",
+  "module": "sysmo",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 637,
+  "has_deps": 0
+ }
+]

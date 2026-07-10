@@ -1,79 +1,40 @@
-# pub/sub-loop 项目评估报告
-生成时间: 2026-07-10 07:28
-总需求条目: 1626
+# pub/sub-loop 多维度项目评估报告
 
-## 1. 内容质量
-- 有详细描述（>100字）: 1626 (100%)
-- 平均描述长度: 1144 字符
-- 最长描述: 11975 字符
-- 最短描述: 216 字符
+> 生成时间：2026-07-10 | 数据源：GitHub Project #4 | 总条目：1626
 
-## 2. 模块覆盖
-- common                   :  494 █████████████████████████████████████████████████
-- tools                    :  374 █████████████████████████████████████
-- io                       :  179 █████████████████
-- base                     :  173 █████████████████
-- data                     :   90 █████████
-- scheduler                :   61 ██████
-- component                :   41 ████
-- profiler                 :   39 ███
-- transport                :   30 ███
-- context                  :   26 ██
-- time                     :   26 ██
-- message                  :   22 ██
-- croutine                 :   14 █
-- node                     :   12 █
-- statistics               :    4 
-- record                   :    4 
-- sysmo                    :    4 
-- parameter                :    4 
-- mainboard                :    3 
-- logger                   :    3 
-- service                  :    3 
-- plugin_manager           :    2 
-- service_discovery        :    2 
-- blocker                  :    2 
-- task                     :    2 
-- event                    :    1 
+## 规模概览
 
-## 3. 优先级分布
-- P3: 1030
-- P2 🟢: 382
-- P1 🟡: 158
-- P0 🔴: 56
+| 维度 | 数值 |
+|------|------|
+| 总产品需求条目 | 1626 |
+| EPIC | 54 |
+| FEA | 457 |
+| BUG | 154 |
+| THEME | 9 |
+| 无分类标签 | 952 |
 
-## 4. 阶段分布
-- Phase 1: Skeleton: 955
-- Current: 467
-- Next: 172
-- Phase 2: Implementation: 32
+## 优先级
 
-## 5. 状态分布
-- Todo: 1120
-- In Progress: 219
-- In Review: 202
-- Needs Triage: 55
-- Blocked: 26
-- Done: 4
+P0: 56 | P1: 158 | P2: 382 | P3: 1030
 
-## 6. Claude 实例负载
-- Claude-E: 551 PRDs
-- Claude-D: 546 PRDs
-- Claude-A: 293 PRDs
-- Claude-G: 106 PRDs
-- Claude-B: 81 PRDs
-- Claude-C: 38 PRDs
-- Manager: 11 PRDs
+## 状态
 
-## 7. PRD 类型分布
-- Other (unlabeled): 952
-- FEA: 457
-- BUG: 154
-- EPIC: 54
-- THEME: 9
+Todo: 1120 | In Progress: 219 | In Review: 202 | Needs Triage: 55 | Blocked: 26 | Done: 4
 
-## 8. 语言分布
-- Mixed: 1408
-- LaTeX: 123
-- C++/CUDA: 53
-- Python: 31
+## Sprint
+
+Phase 1 Skeleton: 955 | Current: 467 | Next: 172 | Phase 2 Implementation: 32
+
+## 模块与优先级密度
+
+component: 0.68 | transport: 0.53 | data: 0.47 | io: 0.38 | context: 0.38 | common: 0.34 | scheduler: 0.33 | time: 0.31 | tools: 0.27 | base: 0.22
+
+## 需求文档完整度
+
+完整 PRD (>5000 chars): 89 | 中等 (>1000 chars): 267 | 需细化 (<1000 chars): 1359
+
+## 风险
+
+P0 仍 Todo: 36 | Blocked: 26 | Needs Triage: 55 | 完成率: 0.25%
+
+详细数据见 data/ 目录。

@@ -1,0 +1,41 @@
+[
+ {
+  "title": "[BUG] Service accessor get_global_resource() invoked from non-owning individual contexts - enforce call-site scope restriction",
+  "type": "BUG",
+  "status": "In Review",
+  "priority": "P1 🟡",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "service",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 694,
+  "has_deps": 0
+ },
+ {
+  "title": "Documentation Request: Allocators / Iterators",
+  "type": "Task",
+  "status": "Todo",
+  "priority": "P3",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-D",
+  "module": "service",
+  "language": "LaTeX",
+  "note": "",
+  "body_len": 619,
+  "has_deps": 0
+ },
+ {
+  "title": "Feature Request: Multiway count_if/copy_if",
+  "type": "Task",
+  "status": "Todo",
+  "priority": "P3",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-D",
+  "module": "service",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 616,
+  "has_deps": 0
+ }
+]

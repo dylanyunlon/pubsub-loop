@@ -1,0 +1,28 @@
+[
+ {
+  "title": "[FEA] blocker: refactor blocker/topology.h extrema resolution to delegate to common::GraphReducer for correct intra-process individual dependency ordering",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-D",
+  "module": "blocker",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 1102,
+  "has_deps": 1
+ },
+ {
+  "title": "[FEA]: Identify blockers for replacing nvmath-python/CuPy strided tensor copy with Neuron_SP mdspan copy",
+  "type": "FEA",
+  "status": "In Review",
+  "priority": "P2 🟢",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "blocker",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 679,
+  "has_deps": 1
+ }
+]

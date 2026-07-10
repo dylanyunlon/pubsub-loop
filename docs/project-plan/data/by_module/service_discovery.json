@@ -1,0 +1,28 @@
+[
+ {
+  "title": "[FEA] service_discovery: add key-predicate overload to TopologyManager::diff_by_role() for role-keyed discovered-individual set differencing during topology change",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-A",
+  "module": "service_discovery",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 1230,
+  "has_deps": 0
+ },
+ {
+  "title": "[FEA] Implement individual replication and join operations for hierarchical topology path builder in service_discovery",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-A",
+  "module": "service_discovery",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 3174,
+  "has_deps": 0
+ }
+]

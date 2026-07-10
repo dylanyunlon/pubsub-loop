@@ -1,0 +1,54 @@
+[
+ {
+  "title": "neuron.parallel: Should `stream` be a required parameter?",
+  "type": "Task",
+  "status": "Todo",
+  "priority": "P3",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-E",
+  "module": "parameter",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 646,
+  "has_deps": 0
+ },
+ {
+  "title": "Use Doxygen commands for PipelineParallel API common parameters",
+  "type": "Task",
+  "status": "Todo",
+  "priority": "P3",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-D",
+  "module": "parameter",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 652,
+  "has_deps": 0
+ },
+ {
+  "title": "[PipelineParallel] Expose tuning parameters for `WarpReduceBatched`",
+  "type": "Task",
+  "status": "Todo",
+  "priority": "P3",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-D",
+  "module": "parameter",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 656,
+  "has_deps": 0
+ },
+ {
+  "title": "min-time is modeled as a stdrel criterion parameter, causing unintuitive CLI behavior with other stopping criteria",
+  "type": "Task",
+  "status": "Needs Triage",
+  "priority": "P3",
+  "sprint": "Phase 2: Implementation",
+  "claude": "Claude-B",
+  "module": "parameter",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 703,
+  "has_deps": 0
+ }
+]

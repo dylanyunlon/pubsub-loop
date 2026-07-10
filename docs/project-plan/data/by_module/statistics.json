@@ -1,0 +1,54 @@
+[
+ {
+  "title": "[FEA] Bulk-process world state snapshots in statistics module for cross-individual state divergence detection and convergence reporting",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "statistics",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 1064,
+  "has_deps": 0
+ },
+ {
+  "title": "List all mangled benchmark symbol names resolvable by statistics::BenchmarkRunner at node startup for runtime metric introspection and report filtering",
+  "type": "Task",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-E",
+  "module": "statistics",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 3017,
+  "has_deps": 0
+ },
+ {
+  "title": "Add sequential individual state relay chain (`s5_operator` topology) as an application-level world-throughput statistics benchmark",
+  "type": "Task",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-D",
+  "module": "statistics",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 725,
+  "has_deps": 0
+ },
+ {
+  "title": "[WIP] Implement batched individual state warp-reduction benchmark suite and performance baselines in statistics module",
+  "type": "Task",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-D",
+  "module": "statistics",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 705,
+  "has_deps": 0
+ }
+]

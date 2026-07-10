@@ -1,0 +1,41 @@
+[
+ {
+  "title": "[FEA] Logger模块实现std::format风格的结构化世界事件日志格式化与std::print实时输出接口",
+  "type": "FEA",
+  "status": "In Progress",
+  "priority": "P3",
+  "sprint": "Current",
+  "claude": "Claude-A",
+  "module": "logger",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 1127,
+  "has_deps": 0
+ },
+ {
+  "title": "[FEA] Implement host-side structured logging system in logger module for real-time individual state change events, pub/sub channel activity, and world lifecycle transitions",
+  "type": "FEA",
+  "status": "In Review",
+  "priority": "P2 🟢",
+  "sprint": "Current",
+  "claude": "Claude-G",
+  "module": "logger",
+  "language": "Mixed",
+  "note": "",
+  "body_len": 744,
+  "has_deps": 0
+ },
+ {
+  "title": "[FEA]: Add support for user-opt-in logging in path finder",
+  "type": "FEA",
+  "status": "Todo",
+  "priority": "P2 🟢",
+  "sprint": "Phase 1: Skeleton",
+  "claude": "Claude-B",
+  "module": "logger",
+  "language": "Python",
+  "note": "",
+  "body_len": 631,
+  "has_deps": 0
+ }
+]

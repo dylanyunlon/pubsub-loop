@@ -2,58 +2,97 @@
 
 ## 背景
 
-pub/sub-loop 项目有 1615 个 Draft Issue 作为产品需求文档。  
-需要将这些需求适配为真正符合「世界模型个体系统 + Cyber RT pub/sub + needle-tools 动态输出」主题的产品需求。
+pub/sub-loop 项目有 1626 个 Draft Issue 作为产品需求文档。
+需要将这些需求提升到 NVIDIA/CCCL 级别的质量标准。
 
-## 当前状态
+## 当前状态（2026-07-10 更新）
 
-- ✅ **588 个条目** 已有详细的自定义描述（主要在 transport, tools, common 模块的深度设计）
-- ✅ **1026 个条目** 已完成第一轮适配：
-  - 连接到 world:: 命名空间
-  - 关联 pub/sub-loop 世界模型上下文
-  - 标注个体输出动态（needle-tools GLB 渲染）关联
+- 全部 1626 个条目已拉取并结构化
+- 按模块、sprint、优先级多维度拆分完成
+- 分为 5 个批次供多个 Claude agent 并行处理
 
-## 下一步：深度需求细化
+### 数据统计
 
-每个 Claude agent 负责其分配的模块，进行第二轮细化：
+| 指标 | 数量 |
+|------|------|
+| 总条目 | 1626 |
+| 已有详细描述（>1000字符）| 267 |
+| 需要细化（<1000字符）| 1359 |
+| P0 关键路径 | 56 |
+| Blocked | 26 |
+| Done | 4 |
 
-### Claude-A（293 条目：transport, base, data）
-- 重点：零拷贝传输、内存对齐、状态融合的详细技术方案
-- 确保 transport 层的接口设计与 needle-tools 的数据消费模式匹配
+## 批次分配
 
-### Claude-B（81 条目：common, context）
-- 重点：命名空间统一（cyber:: → world::）的迁移计划
-- 底层 pub/sub API 与高层节点 API 的层次关系
+### Batch 1: common + tools（868 items）
+- 模块：common (494), tools (374)
+- 需要细化：680 items
+- 数据：`data/batches/batch1_common_tools.json`
+- 重点：world::std 算法原语、CI/CD 工具链
+- 内部决策系统的基础算法层
 
-### Claude-C（38 条目：io, node）
-- 重点：高吞吐 I/O 通道设计、节点生命周期管理
-- 个体 GLB 模型的加载/卸载与节点生命周期的映射
+### Batch 2: 核心模块（195 items）
+- 模块：transport (30), data (90), scheduler (61), croutine (14)
+- 需要细化：147 items
+- 数据：`data/batches/batch2_core.json`
+- 重点：零拷贝传输、状态融合、tick-loop 调度
+- 这是世界模型的心脏——个体间通信和状态同步
 
-### Claude-D（546 条目：transport, data, scheduler）
-- 重点：ChannelWriter 优化、tick-loop 调度、状态缓冲
-- 确保调度频率满足 needle-tools 的渲染帧率要求
+### Batch 3: 基础设施（352 items）
+- 模块：base (173), io (179)
+- 需要细化：344 items
+- 数据：`data/batches/batch3_infra.json`
+- 重点：内存对齐、原子操作、高吞吐 I/O
+- 支撑上层所有模块的底层能力
 
-### Claude-E（551 条目：component, tools, context, profiler）
-- 重点：平台适配能力集、工具链、性能分析
-- CI/CD 流水线覆盖 needle-tools 集成测试
+### Batch 4: 上层模块（127 items）
+- 模块：component (41), context (26), time (26), message (22), node (12)
+- 需要细化：118 items
+- 数据：`data/batches/batch4_upper.json`
+- 重点：平台适配、执行上下文、消息类型
+- 个体的能力定义和生命周期管理
 
-### Claude-G（106 条目：io, data）
-- 重点：批量 TopK 选择、流式编解码
-- 大规模世界中个体可见性筛选（决定哪些个体需要渲染）
+### Batch 5: 辅助模块（84 items）
+- 模块：profiler (39) + statistics, record, sysmo, parameter 等小模块
+- 需要细化：70 items
+- 数据：`data/batches/batch5_aux.json`
+- 重点：性能分析、监控、诊断
+- 保障世界模型的可观测性
 
-## 关键约束
+## 每个 agent 的指令
 
-- GitHub key: 使用已配置的 token
-- 直接在 main 分支操作，不开新分支
-- 不使用 v2/v3 等版本后缀
+1. 读取 `docs/project-plan/DISPATCH_INSTRUCTIONS.txt` 了解项目背景
+2. 读取对应 batch 的 JSON 数据文件
+3. 对 `body_len < 1000` 的 item，生成 CCCL 级别的产品需求描述
+4. 通过 GraphQL API 更新 Project #4 中对应 item 的 body
+5. 更新 `docs/module-specs/` 下的模块规格文档
+6. 直接 push 到 main 分支
+
+### GraphQL 更新示例
+
+```graphql
+mutation {
+  updateProjectV2DraftIssue(input: {
+    projectId: "PVT_kwHODJPfps4Bc4xI"
+    draftIssueId: "<item.item_id>"
+    body: "<新的需求描述>"
+  }) {
+    draftIssue { id title body }
+  }
+}
+```
+
+### Token
+
+```
+使用环境变量 GITHUB_TOKEN
+```
+
+## 约束
+
+- 直接在 main 分支操作
+- 不开新分支、不加 v2/v3 后缀
 - Project #4 是唯一的需求管理界面
-
-## 多维度评估标准
-
-每个需求条目应满足：
-
-1. **技术完整性** — 有清晰的接口设计、依赖关系、验收标准
-2. **世界模型关联** — 明确说明该需求在 pub/sub-loop 世界模型中的角色
-3. **个体动态输出** — 说明该需求如何影响最终的 needle-tools GLB 渲染效果
-4. **跨模块依赖** — 标注与其他模块的依赖和接口约定
-5. **平台覆盖** — 考虑 x86/ARM/嵌入式三平台的适用性
+- 不是所有模块都牵扯 web 3D，很多是后台系统
+- needle-tools 的 web 3D 展示是额外的最终产品输出
+- 内部决策系统消费是核心
