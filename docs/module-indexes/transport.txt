@@ -1,0 +1,32 @@
+=== Module: transport === (30 PRDs)
+
+[   1] P0 🔴     | In Progress     | Claude-D   | [EPIC] Unify RTPS and shared-memory transport backends into a single individual-to-individual state 
+[   2] P0 🔴     | In Progress     | Claude-A   | [EPIC] Zero-copy async individual state transfer protocol - bulk position and data sync between indi
+[   3] P0 🔴     | In Progress     | Claude-A   | [EPIC] transport/memory_pool roadmap: typed individual-state allocators, shared-memory segment lifec
+[   4] P1 🟡     | In Review       | Claude-A   | [BUG] Type-erasing individual state memory resource via transport layer degrades default allocation 
+[   5] P1 🟡     | Needs Triage    | Claude-A   | [BUG] AtomicRef<float>::fetch_add segfaults on local shared memory in cluster launch context (sm_90 
+[   6] P2 🟢     | In Review       | Claude-E   | [FEA] Add .verify layout and serialization tests for Cyber RT transport/message_format.h wire protoc
+[   7] P2 🟢     | Needs Triage    | Claude-G   | [FEA] Add example mixing legacy Cyber RT transport protocol and modern pub/sub-loop intra-process ch
+[   8] P2 🟢     | Needs Triage    | Claude-A   | [FEA] Implement parallel lexicographical individual state comparison for conflict detection across R
+[   9] P2 🟢     | Needs Triage    | Claude-A   | [FEA] Add remote shared memory support to transport::Barrier<thread_scope_block> for cross-IPU indiv
+[  10] P2 🟢     | Needs Triage    | Claude-A   | [FEA] Implement memcpy_async global-to-global on system-scope barrier for cross-partition individual
+[  11] P2 🟢     | Needs Triage    | Claude-D   | [FEA] Implement BlockLoad/BlockStore direct global-to-shared and shared-to-global paths for individu
+[  12] P2 🟢     | Needs Triage    | Claude-D   | [FEA] Implement virtual shared memory with global-memory spill for merge_sort and unique_by_key in i
+[  13] P2 🟢     | Needs Triage    | Claude-A   | [FEA] Runtime interface to query shared memory capacity and configure carveout for individual state 
+[  14] P2 🟢     | Needs Triage    | Claude-A   | [FEA] Provide runtime API to query shared memory needs for individual state processing (see also PRD
+[  15] P3       | In Progress     | Claude-A   | [FEA] 重构Transport层个体间通道分发逻辑——依据拓扑距离与状态大小自动路由RTPS/共享内存/进程内传输
+[  16] P3       | In Progress     | Claude-A   | [FEA] node::ChannelBuffer<T> 重构 — 以 base-layer transport 消息原语替换复合通道类型，统一个体状态传输表示
+[  17] P3       | In Progress     | Claude-D   | [FEA] Implement transport::read async individual world-state ingestion primitive for zero-copy pub/s
+[  18] P3       | In Review       | Claude-E   | [FEA] Design ordered state delivery protocol with determinism guarantees for individual pub/sub chan
+[  19] P3       | Needs Triage    | Claude-A   | Enable safe inclusion of transport::Atomic<T> and lock-free channel primitives in Cyber RT translati
+[  20] P3       | Needs Triage    | Claude-E   | [Draft] Add HPX execution backend adapter to transport module for distributed inter-individual pub/s
+[  21] P3       | Needs Triage    | Claude-C   | [FEA] Integrate high-throughput batched individual state inference queries into RTPS transport layer
+[  22] P3       | Needs Triage    | Claude-A   | [DistributedCore] Implement exec::guarantee and max_total_num_items capacity contract for pub/sub-lo
+[  23] P3       | Needs Triage    | Claude-A   | [transport] Implement P2835R7 and P3936R1 std::atomic_ref::address() polyfill for pub/sub-loop distr
+[  24] P3       | Needs Triage    | Claude-D   | [FEA] Reduce BlockAdjacentDifference shared memory usage by 50% for individual state spatial process
+[  25] P3       | Needs Triage    | Claude-D   | Guard empty tiled message layout shape size in transport layer for zero-element and perfectly-divisi
+[  26] P3       | Needs Triage    | Claude-C   | [FEA] Migrate tensor_parallel::erase and erase_if to world::std namespace for individual state colle
+[  27] P3       | Needs Triage    | Claude-E   | [DOC] Document async_contract_fulfillment enum semantics and async write/read patterns in Cyber RT t
+[  28] P3       | Needs Triage    | Claude-E   | [DOC] Fix broken dynamic shared memory reference link in Cyber RT transport documentation
+[  29] P3       | Needs Triage    | Claude-D   | Remove legacy PipelineParallel dispatchers from transport layer — migrate algorithm selection to sch
+[  30] P3       | Needs Triage    | Claude-D   | [BUG] compute-sanitizer reports invalid shared memory read in DeviceScanKernel warpspeed variant on 

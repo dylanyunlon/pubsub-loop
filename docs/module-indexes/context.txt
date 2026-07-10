@@ -1,0 +1,28 @@
+=== Module: context === (26 PRDs)
+
+[   1] P1 🟡     | Todo            | Claude-E   | [BUG]:  _LIBNeuronCXX_DEBUG_ASSERT doesn't work in constexpr contexts in all compilers
+[   2] P1 🟡     | Todo            | Claude-A   | RFC: Support launch_attr in LaunchConfig ctor for Cyber RT context kernel dispatch
+[   3] P1 🟡     | Todo            | Claude-E   | [BUG]: neuron::std::extents::extent does not work in constexpr context if there is at least one dyna
+[   4] P1 🟡     | Todo            | Claude-A   | Avoid referencing the current device in `LaunchConfig`
+[   5] P1 🟡     | Todo            | Claude-A   | Provide a fast path for constructing a `StridedMemoryView` from a `cupy.ndarray`
+[   6] P2 🟢     | In Progress     | Claude-E   | [FEA] Emit startup diagnostic when individual execution context detects incompatible Cyber RT middle
+[   7] P2 🟢     | Todo            | Claude-B   | Update examples/custom_criterion.cu
+[   8] P2 🟢     | Todo            | Claude-E   | [FEA]: Green Context
+[   9] P3       | In Progress     | Claude-B   | [FEA] context::LowerLevelPubSubAPI — 实现不接受节点数组输入的底层 pub/sub 并行执行接口
+[  10] P3       | In Progress     | Claude-E   | [FEA] Implement context module interoperability bridge example for integrating legacy individual run
+[  11] P3       | In Progress     | Claude-E   | Investigate individual execution context compatibility when building pub/sub-loop against alternate 
+[  12] P3       | In Progress     | Claude-B   | [BUG] Investigate context::ComputePipeline performance regression caused by type-erased pub/sub-loop
+[  13] P3       | In Progress     | Claude-E   | [BUG] Fix incorrect context module execution-scope boundary placement causing individual state acces
+[  14] P3       | In Progress     | Claude-E   | [FEA] Validate individual execution context and transport channel consistency before state publish
+[  15] P3       | In Progress     | Claude-E   | [FEA] Skip redundant individual execution context setup in transport launch when context already act
+[  16] P3       | In Progress     | Claude-D   | [Task]: Eliminate context module static-variable race conditions in cccl.c v2 pub/sub-loop on Window
+[  17] P3       | In Review       | Claude-B   | Add context-scoped strided NdArrayIterator for pub/sub loop data traversal
+[  18] P3       | In Review       | Claude-E   | [context] Handle unexpected struct_name in cuda.core context cooperative kernel codegen
+[  19] P3       | In Review       | Claude-E   | cuda.cccl: Fix header discovery under pip build isolation in Cyber RT pub/sub-loop (context)
+[  20] P3       | In Review       | Claude-E   | [STF][trivial] Forward declare stf_ctx_handle in C-STF header place section
+[  21] P3       | In Review       | Claude-E   | [STF] Name green context data places by handle and support VMM mem_create
+[  22] P3       | In Review       | Claude-D   | [docs] Document that streams are created as non-blocking
+[  23] P3       | Todo            | Claude-A   | Allow `Device.set_current()` to return self?
+[  24] P3       | Todo            | Claude-C   | [STF] Add examples of nested local contexts
+[  25] P3       | Todo            | Claude-E   | `logical_device` and `green_context`: can we do better?
+[  26] P3       | Todo            | Claude-E   | [spike] Green Contexts

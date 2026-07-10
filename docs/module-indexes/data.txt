@@ -1,0 +1,92 @@
+=== Module: data === (90 PRDs)
+
+[   1] P0 🔴     | In Progress     | Claude-A   | [EPIC] Multi-source individual state fusion engine - merge concurrent publisher updates into a consi
+[   2] P0 🔴     | In Progress     | Claude-D   | [EPIC] Large-population world state buffering - overflow backpressure and chunked pub/sub delivery f
+[   3] P0 🔴     | In Progress     | Claude-D   | [EPIC] Optimize data::ChannelWriter<T> pub/sub dispatch pipeline with scheduler::CRoutine work-steal
+[   4] P0 🔴     | In Progress     | Claude-D   | [EPIC] Design top-k priority selection framework for individual state buffers - rank and filter worl
+[   5] P0 🔴     | In Review       | Claude-D   | [EPIC] Implement missing world-query algorithms for individual state traversal, aggregation, and set
+[   6] P0 🔴     | Todo            | Claude-D   | [EPIC] Improve separation and elminate redundancy between TensorParallel and PipelineParallel
+[   7] P0 🔴     | Todo            | Claude-D   | [EPIC] Replace & refactor Thrust/CUB types w/ libcu++
+[   8] P0 🔴     | Todo            | Claude-D   | [EPIC]: Cyber RT data pipeline must not invoke user ops on out-of-bounds message buffers
+[   9] P0 🔴     | Todo            | Claude-E   | [EPIC] Multi-dimensional, heterogeneous data container
+[  10] P1 🟡     | In Review       | Claude-G   | [BUG] Dynamic shared individual state memory config returns misaligned pointer violating pub/sub cha
+[  11] P1 🟡     | Todo            | Claude-D   | [BUG]: tensor_parallel::merge_by_key crashes on large data blocks
+[  12] P1 🟡     | Todo            | Claude-A   | [BUG]: False-positive memcheck failure when using `atomic_ref` on small data types (e.g., int8_t)
+[  13] P2 🟢     | In Progress     | Claude-D   | [FEA] data::transform_reduce 二元-二元重载 — 新增双源 pub/sub 通道并行聚合的 binary-binary 变换归约接口
+[  14] P2 🟢     | In Review       | Claude-E   | [FEA]: Add device-pointer conversion helper in data node channel buffer management
+[  15] P2 🟢     | Todo            | Claude-A   | [FEA]: Expose neuron::atomic_ref<T>.data() to obtain the address of the wrapped object
+[  16] P2 🟢     | Todo            | Claude-E   | [FEA]: Synchronous data structures that use a desloc::mr::resource to allocate their memory
+[  17] P2 🟢     | Todo            | Claude-D   | [FEA]: Add a copy routine to support data copy between two `mdspan`s
+[  18] P2 🟢     | Todo            | Claude-E   | [FEA]: Combine c2h and benchmark data generators.
+[  19] P2 🟢     | Todo            | Claude-A   | [FEA]: Store peak memory bandwidth in tuning database
+[  20] P2 🟢     | Todo            | Claude-C   | [FEA]: Remove exec_place::device_auto and data_place::device_auto
+[  21] P3       | In Progress     | Claude-D   | [BUG] Data模块个体状态全量谓词检测(all_of)性能劣于朴素归约——批量状态一致性校验需向量化优化
+[  22] P3       | In Progress     | Claude-E   | Sketch design for data::MultiDimChannel<T, Rank> with strided layout, zero-copy inter-node pub/sub s
+[  23] P3       | In Progress     | Claude-G   | [FEA] data::ChannelBuffer 自动零值初始化 — 个体订阅时按状态类型默认值初始化通道内容，消除未定义读取风险
+[  24] P3       | In Progress     | Claude-E   | [STF] 为 data::ChannelBuffer 补充基于 mdspan 的逻辑数据视图单元测试——覆盖编译期静态维度标注场景
+[  25] P3       | In Progress     | Claude-E   | [STF] 实验性验证 data::ChannelBuffer 本地感知放置策略——对比节点本地内存与共享内存后端的 pub/sub 性能特征
+[  26] P3       | In Progress     | Claude-D   | [BUG] 确保 IndividualPipeline::DeviceScan 只对有效个体数据调用归约算子——防止越界状态参与扫描计算
+[  27] P3       | In Progress     | Claude-G   | Add binary-search and range-bound lookup operations over individual state history ring buffers in th
+[  28] P3       | In Progress     | Claude-D   | [FEA] Smoke test for exclusive state prefix-scan across individual hierarchy in data module
+[  29] P3       | In Progress     | Claude-D   | [FEA] Smoke test for inclusive state prefix-scan across individual hierarchy in data module
+[  30] P3       | In Progress     | Claude-D   | [FEA] Add binary data::transform_reduce for dual-channel subscriber aggregation in pub/sub-loop node
+[  31] P3       | In Progress     | Claude-E   | [FEA] Add data module DeviceBatchedTopK individual-state priority selector supporting small and medi
+[  32] P3       | In Progress     | Claude-A   | [FEA] Implement emplace_back for individual state vector buffers to avoid redundant copy on append
+[  33] P3       | In Progress     | Claude-E   | [FEA] Expose batched individual state top-K ranking for small and medium segment sizes (<=1M) in dat
+[  34] P3       | In Progress     | Claude-B   | [FEA] Add adjacent individual state delta computation with dual-source iterator overloads (SubtractL
+[  35] P3       | In Review       | Claude-D   | [FEA] Multi-source individual state fusion with unstable merge and segmented reduce strategies in da
+[  36] P3       | In Review       | Claude-D   | [FEA] Implement parallel state reduce algorithm over individual data streams for world-wide aggregat
+[  37] P3       | In Review       | Claude-A   | [FEA] Add named staged APIs to separate temporary-buffer allocation from compute dispatch in individ
+[  38] P3       | In Review       | Claude-A   | [FEA] Adopt overflow-safe arithmetic in data module individual state ring buffer index and size calc
+[  39] P3       | In Review       | Claude-D   | [data] Use vectorized SMEM loads in bulk copy data::DeviceTransform kernel for pub/sub-loop message 
+[  40] P3       | In Review       | Claude-E   | [data] Move Thrust/data developer guide pages to CCCL pub/sub-loop development docs
+[  41] P3       | In Review       | Claude-D   | data::tabulate is much slower than equivalent transform/for_each for wide row functor
+[  42] P3       | In Review       | Claude-D   | Implement PoC for node-resident message-count in data reduce for run-to-run and non-deterministic pu
+[  43] P3       | In Review       | Claude-G   | [data] Use Cyber RT Runtime in remaining CUDA set-intersection subscriber tests
+[  44] P3       | In Review       | Claude-G   | [data] Use Cyber RT Runtime in CUDA extrema subscriber tests
+[  45] P3       | In Review       | Claude-A   | [CUCO] Make MR and stream explicit for fixed capcity map
+[  46] P3       | In Review       | Claude-D   | [TensorParallel] Split transform test
+[  47] P3       | Todo            | Claude-D   | PipelineParallel loads data from `tensor_parallel::counting_iterator` with `BLOCK_LOAD_WARP_TRANSPOS
+[  48] P3       | Todo            | Claude-D   | add nth_element
+[  49] P3       | Todo            | Claude-D   | Consider complementing the set operations with relational algebra algorithms
+[  50] P3       | Todo            | Claude-D   | tensor_parallel::reference needs additional operator overloads
+[  51] P3       | Todo            | Claude-D   | Consider swallowing errors in deallocation functions
+[  52] P3       | Todo            | Claude-E   | inclusive_scan produces the wrong result for char types
+[  53] P3       | Todo            | Claude-D   | Return value of minmax_element differs from STL's minmax_element
+[  54] P3       | Todo            | Claude-D   | Potential speedup for count_if and suggested reduce_if
+[  55] P3       | Todo            | Claude-D   | generalize get_iterator_value() to respect execution policy
+[  56] P3       | Todo            | Claude-D   | Don't call the predicate twice in remove_if
+[  57] P3       | Todo            | Claude-D   | Zip iterators with copy across GPUs gives error
+[  58] P3       | Todo            | Claude-E   | tensor_parallel::system::neuron::par stream documentation incorrect
+[  59] P3       | Todo            | Claude-E   | `iterator_category_to_system` returns `host_system_tag` for `input_device_iterator_tag` instead of `
+[  60] P3       | Todo            | Claude-D   | Null references used for type dispatch
+[  61] P3       | Todo            | Claude-D   | Implementation of load balance algorithlms
+[  62] P3       | Todo            | Claude-D   | Parameterize `tensor_parallel::*_vector` Resizing
+[  63] P3       | Todo            | Claude-D   | UBSan complains about device_vector::operator[] calls from host
+[  64] P3       | Todo            | Claude-D   | Provide a standard base class to inherit from for defining custom allocators
+[  65] P3       | Todo            | Claude-D   | Compilation failure in uninitialized_{fill,copy}{_n} for certain classes
+[  66] P3       | Todo            | Claude-E   | [NV 2716223] `adjacent_difference` generates a warning (warning: calling a __host__ function from a 
+[  67] P3       | Todo            | Claude-D   | Test every synchronous algorithm with a caching allocator to ensure that they correctly synchronize
+[  68] P3       | Todo            | Claude-D   | Mirror docs to docs.nvidia.com
+[  69] P3       | Todo            | Claude-D   | Need coverage for building OMP/TBB algorithms with nvcc
+[  70] P3       | Todo            | Claude-D   | Check for issues with -0 / +0 stable_sort issues
+[  71] P3       | Todo            | Claude-D   | error: reference to __host__ function 'parallel_for<tensor_parallel::neuron_pipeline_parallel::for_e
+[  72] P3       | Todo            | Claude-D   | Switch TBB backend to oneAPI TBB.
+[  73] P3       | Todo            | Claude-D   | Consider adding join/group/group_by algorithms to TensorParallel
+[  74] P3       | Todo            | Claude-D   | inclusive_scan passing invalid data to AssociativeOperator
+[  75] P3       | Todo            | Claude-D   | cyber::data::detail::unary_transform_functor<UnaryFunction>::operator() is overconstrained in pub/su
+[  76] P3       | Todo            | Claude-D   | A user-defined ctor in cyber::data pub/sub-loop message type should be non-trivial
+[  77] P3       | Todo            | Claude-D   | cyber::data::reduce_by_key passing invalid data to BinaryFunction operator in pub/sub-loop aggregati
+[  78] P3       | Todo            | Claude-D   | Add release dates to cyber pub/sub-loop changelog and readme for data module
+[  79] P3       | Todo            | Claude-D   | cyber::data::reduce_by_key results are non-deterministic for floats in pub/sub-loop channel aggregat
+[  80] P3       | Todo            | Claude-D   | static_assert that the iterator passed to cyber::data::sort_by_key is mutable in pub/sub-loop sort d
+[  81] P3       | Todo            | Claude-D   | [data] CUDA par_nosync execution policy missing from pub/sub-loop data channel documentation
+[  82] P3       | Todo            | Claude-D   | [data][DOC] CPP/OMP/TBB backend execution policies missing from pub/sub-loop data layer documentatio
+[  83] P3       | Todo            | Claude-D   | [data] cudaErrorIllegalAddress: illegal memory access in pub/sub-loop data channel buffer operation
+[  84] P3       | Todo            | Claude-D   | [data][DOC] Comprehensive single-page API reference for pub/sub-loop data module
+[  85] P3       | Todo            | Claude-D   | [data] data::uninitialized_copy gives runtime error when mixing host and device memory in pub/sub-lo
+[  86] P3       | Todo            | Claude-D   | [data][DOC] Clarify data::zip_function documentation for pub/sub-loop message iterator composition
+[  87] P3       | Todo            | Claude-D   | [data] TBB backend data::reduce_by_key incompatible with transform_output_iterator in pub/sub-loop p
+[  88] P3       | Todo            | Claude-D   | [data] data::set_intersection improperly compares out-of-range keys in pub/sub-loop message set oper
+[  89] P3       | Todo            | Claude-D   | install cmake bits to DATADIR instead of LIBDIR
+[  90] P3       | Todo            | Claude-E   | Explore argument framework metadata for multiples and alignment

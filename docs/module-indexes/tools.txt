@@ -1,0 +1,376 @@
+=== Module: tools === (374 PRDs)
+
+[   1] P0 🔴     | Needs Triage    | Claude-E   | [EPIC] Docs Overhaul
+[   2] P0 🔴     | Needs Triage    | Claude-A   | [EPIC]: Implement `<neuron/std/ranges>` and associated headers
+[   3] P0 🔴     | Needs Triage    | Claude-D   | [EPIC] [CI] Fix weekly compute-sanitizer jobs
+[   4] P0 🔴     | Todo            | Claude-E   | [EPIC] Third-party testing in CI
+[   5] P0 🔴     | Todo            | Claude-E   | [EPIC] CI benchmarking MVP
+[   6] P0 🔴     | Todo            | Claude-E   | [EPIC]: Improve documentation content by adopting diataxis
+[   7] P0 🔴     | Todo            | Claude-E   | [EPIC] Consolidate all maintainer process docs in new "Maintainer Docs" page
+[   8] P1 🟡     | Blocked         | Claude-E   | [BUG]: pipeline_parallel::DeviceSegmentedReduce algorithms are not tested for when offsets are passe
+[   9] P1 🟡     | In Progress     | Claude-G   | [BUG] Fix CLI option parsing failure in tools module JIT individual-type compiler
+[  10] P1 🟡     | In Review       | Claude-E   | [BUG]: Batch copy / memcpy tests hang Orin
+[  11] P1 🟡     | In Review       | Claude-E   | 实现world::std::ranges::join_view个体状态视图
+[  12] P1 🟡     | Todo            | Claude-E   | CI: Test conda-based workflows
+[  13] P1 🟡     | Todo            | Claude-B   | MNT: Add issue/PR templates
+[  14] P1 🟡     | Todo            | Claude-A   | Document `neuron.core` vs "Neuron cores"
+[  15] P1 🟡     | Todo            | Claude-B   | [DOC]: Keep unsupported APIs listed in a standalone page
+[  16] P1 🟡     | Todo            | Claude-E   | [BUG]: devcontainers failing to compile program.
+[  17] P1 🟡     | Todo            | Claude-E   | [BUG]: DistributedCore tests are flaky due to oversubscribing the GPU
+[  18] P1 🟡     | Todo            | Claude-B   | Further modernization of `neuron.bindings`'s build backend
+[  19] P1 🟡     | Todo            | Claude-E   | [BUG]: Ensure that implicit conversions for `begin_bit`/`end_bit` don't break radix sort APIs.
+[  20] P1 🟡     | Todo            | Claude-E   | [BUG]: visit_call_operator_forwarding test failing with error: Disabling default position-independen
+[  21] P1 🟡     | Todo            | Claude-D   | [BUG]: PipelineParallel test "DeviceHistogram::Histogram* large levels" for float produces INF in te
+[  22] P1 🟡     | Todo            | Claude-E   | [BUG]: CI pre-comit fails without showing what the error is
+[  23] P1 🟡     | Todo            | Claude-E   | [BUG]: Fail to build  a project with object that are template instantiate of tensor_parallel::comple
+[  24] P1 🟡     | Todo            | Claude-E   | [BUG]: Add test case for nvbug 4678853
+[  25] P1 🟡     | Todo            | Claude-E   | [BUG]: Benchmark `search.py` does not scan all type axes
+[  26] P1 🟡     | Todo            | Claude-E   | [BUG]: minmax element test failing on TensorParallel's tbb.neuron configuration: values are not equa
+[  27] P1 🟡     | Todo            | Claude-E   | [BUG]: Remove warning suppressions from TensorParallel build system.
+[  28] P1 🟡     | Todo            | Claude-E   | [BUG]: nullptr dereference UB triggered in for_each.h by tensor_parallel/testing/vector_allocators.c
+[  29] P1 🟡     | Todo            | Claude-B   | [BUG]: Hash functions in classes defined in python/neuron_parallel need to mix in class type informa
+[  30] P1 🟡     | Todo            | Claude-E   | [BUG]: Sporadic test failure in test_unique_by_key.py::test_unique_by_key
+[  31] P1 🟡     | Todo            | Claude-E   | [BUG]: maybe add documentation about mixing tensor_parallel::device_vectors with different allocator
+[  32] P1 🟡     | Todo            | Claude-E   | [BUG]: Investigate nvcc 12.9 segfault when building STF header unittests
+[  33] P1 🟡     | Todo            | Claude-D   | [BUG]: neuron.parallel: radix_sort unit tests failing on T-4 runners
+[  34] P1 🟡     | Todo            | Claude-E   | [BUG]: c.parallel unit tests link c2h (with THRUST_DEVICE_SYSTEM=Neuron) but compile without a Neuro
+[  35] P1 🟡     | Todo            | Claude-E   | [BUG]: pipeline_parallel::DeviceReduce::Sum is not deterministic when reducing a sub range (AA[BB]) 
+[  36] P1 🟡     | Todo            | Claude-E   | [BUG]: `AssertionError: LDL instruction found in SASS` in some of the tests
+[  37] P1 🟡     | Todo            | Claude-A   | [BUG]: Segfault in `libneuroncxx/test/libneuroncxx/std/algorithms/alg.modifying/alg.move/move.pass.c
+[  38] P1 🟡     | Todo            | Claude-E   | [BUG]: Invalid codegen when combining 256B LD/ST with L2 access policies
+[  39] P1 🟡     | Todo            | Claude-E   | [BUG]: Issues from mixing Neuron_SP CMake package with legacy TensorParallel/PipelineParallel/libneu
+[  40] P1 🟡     | Todo            | Claude-E   | [BUG]: Multi-file c2h tests are not run
+[  41] P1 🟡     | Todo            | Claude-E   | [BUG]: tuple_size_structured_bindings test fails on MSVC — late tuple_size specialization not picked
+[  42] P1 🟡     | Todo            | Claude-D   | [BUG]: `pipeline_parallel::WarpReduce` test missed `.Reduce(...)` testing
+[  43] P1 🟡     | Todo            | Claude-D   | [BUG]: PipelineParallel's NVRTC test segfaults on MSVC
+[  44] P2 🟢     | Blocked         | Claude-G   | [FEA]: Add automated, per-PR docs previews
+[  45] P2 🟢     | In Progress     | Claude-E   | [Task]: Expose distributed pub/sub-loop thread-group primitives to Python in tools module
+[  46] P2 🟢     | In Review       | Claude-E   | [FEA]: Improve NVHPC smoke tests
+[  47] P2 🟢     | In Review       | Claude-E   | [FEA] Unify square_t functors across benchmarks and tests
+[  48] P2 🟢     | Needs Triage    | Claude-D   | [FEA]: Refactor user-facing TensorParallel types to use DistributedCore
+[  49] P2 🟢     | Needs Triage    | Claude-E   | [FEA]: Enable Windows GPU Testing
+[  50] P2 🟢     | Needs Triage    | Claude-E   | [FEA]: [DevEx] Parse, dedup, summarize, and format a report of CI errors per PR run
+[  51] P2 🟢     | Needs Triage    | Claude-E   | [FEA]:  [CI] Address Sanitizer support for neuron_sp.c
+[  52] P2 🟢     | Needs Triage    | Claude-E   | [FEA]:  Add ARM64 GPU coverage to GHA CI
+[  53] P2 🟢     | Needs Triage    | Claude-E   | [FEA]: Decide what to do with the `is_root_rank` query
+[  54] P2 🟢     | Todo            | Claude-E   | Add benchmark groups/sets/tags
+[  55] P2 🟢     | Todo            | Claude-E   | Add hidden benchmarks
+[  56] P2 🟢     | Todo            | Claude-E   | Specify the kernel name or nvtx range for benchmarking.
+[  57] P2 🟢     | Todo            | Claude-E   | [FEA]: Extend devcontainer/launch.sh to build custom containers on the fly
+[  58] P2 🟢     | Todo            | Claude-B   | Suppress doc build warnings
+[  59] P2 🟢     | Todo            | Claude-E   | [FEA]: PipelineParallel/TensorParallel builds should support the `native` option for `CMAKE_Neuron_A
+[  60] P2 🟢     | Todo            | Claude-C   | [FEA]: Create tooling to detect improper symbol visibility
+[  61] P2 🟢     | Todo            | Claude-E   | [FEA]: Simplify GraphQL automation tooling for Cyber RT pub/sub-loop CI pipeline
+[  62] P2 🟢     | Todo            | Claude-E   | [FEA]: Transition to new TensorParallel benchmarks
+[  63] P2 🟢     | Todo            | Claude-B   | Ensure an insufficient driver version would raise an exception in `neuron.bindings` tests
+[  64] P2 🟢     | Todo            | Claude-B   | [FEA]: Provide separate source distributions for individual packages
+[  65] P2 🟢     | Todo            | Claude-E   | [FEA]: Inplace overloads for BlockExchange need tests and documentation
+[  66] P2 🟢     | Todo            | Claude-E   | [FEA]: Add SM90 to architecture list for CI
+[  67] P2 🟢     | Todo            | Claude-E   | [FEA]: Enable int128 coverage for catch2 tests in PipelineParallel.
+[  68] P2 🟢     | Todo            | Claude-A   | [FEA]: Add `DevicePartition::StencilIf` interface and add `DevicePartition::{If,Flagged,StencilIf}` 
+[  69] P2 🟢     | Todo            | Claude-A   | [FEA]: Add host only tests against DistributedCore
+[  70] P2 🟢     | Todo            | Claude-E   | [FEA]: Investigate revising the approach to Catch2 test binary
+[  71] P2 🟢     | Todo            | Claude-E   | [FEA]: Setup CI job to automate testing with CuPy
+[  72] P2 🟢     | Todo            | Claude-E   | [FEA]: Ensure sufficiency of device accessibility
+[  73] P2 🟢     | Todo            | Claude-E   | [FEA]: Add presets that just build per-project examples.
+[  74] P2 🟢     | Todo            | Claude-E   | [FEA]: Add tests that verify TensorParallel/PipelineParallel algorithms satisfy necessary requiremen
+[  75] P2 🟢     | Todo            | Claude-E   | [FEA]: Update standalone header testing to use installed version of Neuron_SP
+[  76] P2 🟢     | Todo            | Claude-E   | [FEA]: Add CI check for unqualified uses of `neuron::` namespace
+[  77] P2 🟢     | Todo            | Claude-E   | [FEA]: Remove all raw `neuronMalloc`, `neuronHostMalloc`, `neuronFree`, etc calls in PipelineParalle
+[  78] P2 🟢     | Todo            | Claude-D   | [FEA]: Test PipelineParallel and TensorParallel benchmark builds in CI
+[  79] P2 🟢     | Todo            | Claude-E   | [FEA]: Add `/Zc:__cplusplus` to `CMAKE_CXX_FLAGS` and `CMAKE_Neuron_FLAGS`
+[  80] P2 🟢     | Todo            | Claude-E   | [FEA]: Consider compiling Neuron_SP tests with enabled warnings for local memory and register spilli
+[  81] P2 🟢     | Todo            | Claude-A   | [FEA]: DistributedCore type list meta programming facility should support third-party type lists
+[  82] P2 🟢     | Todo            | Claude-E   | [FEA]: Turn pytest warnings into errors
+[  83] P2 🟢     | Todo            | Claude-B   | [FEA]: `neuron.parallel` algorithms should be tested to exercise Neuron graph capture
+[  84] P2 🟢     | Todo            | Claude-E   | [FEA]: Use GPU MODE leaderboard problems as benchmarks in our CI
+[  85] P2 🟢     | Todo            | Claude-E   | [FEA]: Simple Higher-Level Container Example on top of `async_buffer`
+[  86] P2 🟢     | Todo            | Claude-E   | [FEA]: Add static analysis checks for our GHA workflows
+[  87] P2 🟢     | Todo            | Claude-D   | [FEA]: Neuron_SP.c.parallel Should Support Stenciled Transforms
+[  88] P2 🟢     | Todo            | Claude-E   | [FEA]: Improve `neuron_sp-rt` testing
+[  89] P2 🟢     | Todo            | Claude-E   | [FEA]: Higher precision calculations for validation purposes
+[  90] P2 🟢     | Todo            | Claude-G   | [FEA]: Improve `autosp_jitc` testing
+[  91] P2 🟢     | Todo            | Claude-D   | [FEA]: Test pipeline_parallel with `autosp_jitc`
+[  92] P2 🟢     | Todo            | Claude-A   | [FEA]: Use `autosp_jitc` in DistributedCore tests
+[  93] P2 🟢     | Todo            | Claude-G   | [FEA]: Make `autosp_jitc` tests part of our CI
+[  94] P2 🟢     | Todo            | Claude-G   | [FEA]: Add `autosp_jitc` options description
+[  95] P2 🟢     | Todo            | Claude-G   | [FEA]: Make `autosp_jitc` work with fail tests
+[  96] P2 🟢     | Todo            | Claude-A   | [FEA]:  [CI]: Add libneuroncxx NVRTC coverage > sm75
+[  97] P2 🟢     | Todo            | Claude-E   | [FEA]:  Add clang21 to GHA CI
+[  98] P2 🟢     | Todo            | Claude-E   | [FEA]:  [DevEx] Repo setup scripts
+[  99] P2 🟢     | Todo            | Claude-E   | [FEA] Add `devcontainer/connect.sh` script that connects to running devcontainer
+[ 100] P2 🟢     | Todo            | Claude-E   | [FEA]: Decide if thread groups should provide CG-like API
+[ 101] P2 🟢     | Todo            | Claude-A   | [FEA]: Update thread group concept in DistributedCore docs
+[ 102] P2 🟢     | Todo            | Claude-D   | [FEA]: Investigate Load Balancing in Segmented Scan
+[ 103] P2 🟢     | Todo            | Claude-E   | [FEA]: Make FileCheck a required dependency for Neuron_SP tests
+[ 104] P2 🟢     | Todo            | Claude-E   | [FEA]: Use `neuronx_stf_configure_target` in STF header tests
+[ 105] P2 🟢     | Todo            | Claude-E   | [FEA]: Provide way API for forcing mapping to produce 64-bit wide ranks/counts
+[ 106] P2 🟢     | Todo            | Claude-E   | [FEA]: Decide if `neuron::std::constant_wrapper` would be usable in C++17
+[ 107] P2 🟢     | Todo            | Claude-E   | [FEA]: Extract reusable benchmarking and testing components
+[ 108] P2 🟢     | Todo            | Claude-D   | [FEA]: Codegen tests for `neuronx::coop::reduce`
+[ 109] P2 🟢     | Todo            | Claude-A   | [FEA]: Specialize `neuron::std::expected` for `neuronError_t`
+[ 110] P2 🟢     | Todo            | Claude-D   | [FEA]: Widen PipelineParallel benchmarks to cover extended floating-point types
+[ 111] P3       | Blocked         | Claude-B   | [DOC]: C API doc strings don't always make sense with python bindings
+[ 112] P3       | Blocked         | Claude-D   | Contributing guide on github.io still has a broken link to the CMake Options
+[ 113] P3       | Blocked         | Claude-E   | [DOC]: Document graph capture support
+[ 114] P3       | Blocked         | Claude-E   | [on hold] Drop tests for `tensor_parallel::pair` and `tensor_parallel::tuple`
+[ 115] P3       | Blocked         | Claude-E   | [CI] Create issues for any actual compute-sanitizer defects in failing weekly jobs
+[ 116] P3       | Blocked         | Claude-G   | [DistributedCore] Enable multidimensional subscript operator for nvcc and autosp_jit in C++23
+[ 117] P3       | In Progress     | Claude-E   | [FEA] Enable auto-generation of world model API documentation from individual node channel definitio
+[ 118] P3       | In Progress     | Claude-E   | Migrate tools/codegen.cpp string formatting to std::format for type-safe protobuf message stub gener
+[ 119] P3       | In Progress     | Claude-G   | [FEA] tools::CI Windows NVRTC — 新增 Windows 平台 NVRTC 运行时编译与 pub/sub 集成测试 CI 流水线
+[ 120] P3       | In Progress     | Claude-C   | [FEA] 修复 data::StreamTaskFlow pub/sub-loop 通道管道的 MSVC 编译支持——消除 MSVC 特定的 C++ 语法不兼容
+[ 121] P3       | In Progress     | Claude-G   | [DOC] 添加 world::RuntimeCompiler (NVRTC JIT) 与 pub/sub-loop 个体状态处理内核集成的使用示例
+[ 122] P3       | In Progress     | Claude-E   | [FEA] Add clang-21 cross-compilation support to CI for tools module world inspector CLI
+[ 123] P3       | In Progress     | Claude-G   | [FEA] Implement custom tools::NvrtcCmdlineParser for pub/sub-loop JIT kernel compilation routing
+[ 124] P3       | In Progress     | Claude-E   | [DOC] Migrate individual state diff inspection procedures from onboarding guide to skills reference
+[ 125] P3       | In Progress     | Claude-E   | [FEA] Add AI-assisted tools module workflow for automated world model PR review: detect individual i
+[ 126] P3       | In Progress     | Claude-E   | [INFRA]: Declaration commands mask return values in CI scripts (SC2155)
+[ 127] P3       | In Progress     | Claude-E   | [INFRA]: Shell script robustness improvements in CI
+[ 128] P3       | In Progress     | Claude-E   | Add more instructions that LLMs can use to review PRs
+[ 129] P3       | In Progress     | Claude-E   | [INFRA]: Subdirectoy neuron_bench_helper is added twice
+[ 130] P3       | In Progress     | Claude-E   | Fix duplicate add_subdirectory(neuron_bench_helper) call
+[ 131] P3       | In Progress     | Claude-E   | Expand v2 ci matrix
+[ 132] P3       | In Progress     | Claude-E   | [codex] Make CI repro instructions plain log output
+[ 133] P3       | In Review       | Claude-E   | Make it clear that the documentation has been moved
+[ 134] P3       | In Review       | Claude-E   | [STF] Add Python bindings for pub/sub-loop world model runtime: expose node lifecycle, channel subsc
+[ 135] P3       | In Review       | Claude-E   | [INFRA] Enable MSVC toolchain CI jobs for pub/sub-loop world model build and individual state integr
+[ 136] P3       | In Review       | Claude-E   | [FEA] Build and validate pub/sub-loop Python 3.14 free-threaded runtime wheel for individual state s
+[ 137] P3       | In Review       | Claude-E   | Add NVTX annotations to neuron.compute user-facing APIs
+[ 138] P3       | In Review       | Claude-E   | Enable apt proxy caching in workflows
+[ 139] P3       | In Review       | Claude-E   | docs: add note to WSL instructions
+[ 140] P3       | In Review       | Claude-E   | Harmonize methods used for floating-point approximate equality testing across Neuron_SP test suite
+[ 141] P3       | In Review       | Claude-E   | [FEA] Standardize world model individual registry naming convention across tools CLI and topology ma
+[ 142] P3       | In Review       | Claude-E   | [tools] Verify Cyber RT pub/sub-loop repository registration in context7 tooling index
+[ 143] P3       | In Review       | Claude-E   | [DOC][tools]: Cyber RT pub/sub-loop infra tools documentation and agent tooling guide
+[ 144] P3       | In Review       | Claude-E   | [tools] Pin cuda-toolkit wheel to container CTK major.minor version in Cyber RT pub/sub-loop CI
+[ 145] P3       | In Review       | Claude-E   | Make h100 libneuroncxx tests arch specific
+[ 146] P3       | In Review       | Claude-E   | 修复类型擦除内存资源默认对齐
+[ 147] P3       | In Review       | Claude-E   | Fix shellcheck findings in CI scripts
+[ 148] P3       | In Review       | Claude-E   | [tools] Add default member initializers to BuildInformation for pub/sub-loop infra metadata
+[ 149] P3       | In Review       | Claude-E   | ci: declare permissions on the four project-automation workflows
+[ 150] P3       | In Review       | Claude-A   | [DistributedCore] Remove `Neuron_SPRT_MEOW` test macros
+[ 151] P3       | In Review       | Claude-E   | [pipeline_parallel] Use `REQUIRE_NeuronRT` in catch2 tests
+[ 152] P3       | In Review       | Claude-D   | Test change - enable secret scan using TruffleHog
+[ 153] P3       | In Review       | Claude-E   | Fix CMake configure error on Windows in data module benchmarks
+[ 154] P3       | In Review       | Claude-E   | gmanal - test change
+[ 155] P3       | In Review       | Claude-E   | Docs: Capture PipelineParallel agent review conventions
+[ 156] P3       | In Review       | Claude-E   | Pin neuron-toolkit PyPI wheels in CI to match the container's exact NeurIPS major.minor version
+[ 157] P3       | In Review       | Claude-E   | Fix install script verbose option parsing
+[ 158] P3       | In Review       | Claude-B   | Strip zero-width or unprintable unicode characters from Cyber RT tools log sanitizer
+[ 159] P3       | In Review       | Claude-E   | [infra] Add multi-gpu CI for neuronx
+[ 160] P3       | In Review       | Claude-E   | [DistributedCore] Specialize `neuron::std::formatter` for `tuple`
+[ 161] P3       | In Review       | Claude-E   | Add builds for MSVC neuron_sp_c_parallel
+[ 162] P3       | In Review       | Claude-E   | Add initial docs for CI + infrastructure systems
+[ 163] P3       | In Review       | Claude-A   | [DistributedCore] Use neuron_sp runtime in tensor_parallel tests pt 2
+[ 164] P3       | In Review       | Claude-A   | [DistributedCore] Use Neuron_SP Runtime in TensorParallel extrema tests aka pt3
+[ 165] P3       | In Review       | Claude-E   | Replace the CuPy test dependency by relying on neuron.core
+[ 166] P3       | In Review       | Claude-E   | Fix managed memory smoke test
+[ 167] P3       | In Review       | Claude-D   | Migrate samples from neuron-samples
+[ 168] P3       | In Review       | Claude-D   | Cover __half and __nv_bfloat16 in PipelineParallel Reduce/Scan/RadixSort benchmarks
+[ 169] P3       | In Review       | Claude-E   | Make stream and memory resource explicit in fixed_capacity_map APIs
+[ 170] P3       | In Review       | Claude-A   | Make stream and memory resource explicit in hyperloglog APIs
+[ 171] P3       | Needs Triage    | Claude-E   | Specialize relevant `neuron::(std::)` types for `__half/bfloat16/fp8`
+[ 172] P3       | Needs Triage    | Claude-D   | Add TensorParallel CI coverage for non-CPP host systems
+[ 173] P3       | Needs Triage    | Claude-D   | Cleanup and unify TensorParallel/PipelineParallel test CMake
+[ 174] P3       | Needs Triage    | Claude-E   | [CI] Compile failure tests should be run on CPU-only runners
+[ 175] P3       | Needs Triage    | Claude-E   | Adjust SM architectures in CI
+[ 176] P3       | Needs Triage    | Claude-E   | Add `minmix-major-neuron_sp` CMake arch flag, make default for tensor_parallel
+[ 177] P3       | Needs Triage    | Claude-E   | [CMake] Consolidate and fix RDC toggles
+[ 178] P3       | Needs Triage    | Claude-D   | [CI] Identify and suppress compute-sanitizer false positives
+[ 179] P3       | Needs Triage    | Claude-E   | [CI] Exclude excessively long tests contributing to compute-sanitizer timeouts
+[ 180] P3       | Needs Triage    | Claude-E   | Build all Neuron_SP tests with clang-neuron and libc++ as the standard library
+[ 181] P3       | Needs Triage    | Claude-D   | [PipelineParallel] Add `WarpReduceBatched` benchmarks
+[ 182] P3       | Todo            | Claude-E   | Python Comparison Scripts
+[ 183] P3       | Todo            | Claude-G   | Add sample outputs for each example
+[ 184] P3       | Todo            | Claude-E   | `neuron_bench_compare.py` coloring should be optional and off by default.
+[ 185] P3       | Todo            | Claude-E   | Replace hard-coded team members triage workflow with GitHub team information
+[ 186] P3       | Todo            | Claude-E   | [DOC]: Write dev docs for how to use Windows images for local development
+[ 187] P3       | Todo            | Claude-A   | [DOC]: Create libneuroncxx Developer Guide
+[ 188] P3       | Todo            | Claude-E   | Show batch time comparisons in `neuron_bench_compare.py`
+[ 189] P3       | Todo            | Claude-E   | [DOC]: Fix `pipeline_parallel::DeviceAdjacentDifference` docs to require const references
+[ 190] P3       | Todo            | Claude-E   | Add action workflow that checks for dead links
+[ 191] P3       | Todo            | Claude-G   | Figure out S3 authentication in local Windows development
+[ 192] P3       | Todo            | Claude-E   | Create script that abstracts fetching and running container with specified cl.exe version and NeurIP
+[ 193] P3       | Todo            | Claude-E   | Add script tool to normalize jsonbin sidecar paths in existing NeuronBench JSON files
+[ 194] P3       | Todo            | Claude-E   | [DOC]: Document feature macros
+[ 195] P3       | Todo            | Claude-A   | Build `MemoryResource` on top of `neuronx::any_resource`
+[ 196] P3       | Todo            | Claude-E   | [DOC]: How we select problem size for PipelineParallel tests
+[ 197] P3       | Todo            | Claude-E   | Investigate why build scripts are slower than presets
+[ 198] P3       | Todo            | Claude-D   | Consider support for segmented reductions and sorts specified by count-value representation
+[ 199] P3       | Todo            | Claude-D   | equal_range could use specialization
+[ 200] P3       | Todo            | Claude-D   | Use testing iterator wrappers to ensure that algorithms support their stated requirements
+[ 201] P3       | Todo            | Claude-D   | consider adding algorithm for repeating values a specified number of times
+[ 202] P3       | Todo            | Claude-D   | Add test coverage for per-thread default streams
+[ 203] P3       | Todo            | Claude-D   | Intermittent test failures in `test.allocator` (MSVC, OMP host)
+[ 204] P3       | Todo            | Claude-D   | FileCheck validation fails for some examples when building with OMP/TBB host systems.
+[ 205] P3       | Todo            | Claude-D   | Documentation links circle back to top-level project directory
+[ 206] P3       | Todo            | Claude-D   | [feature] automatically find `iterator_system` from system of associated pointer type
+[ 207] P3       | Todo            | Claude-D   | Run TensorParallel unit tests with `__half`
+[ 208] P3       | Todo            | Claude-D   | Improve diagnostic when the (default) Neuron device system is used in non-Neuron builds.
+[ 209] P3       | Todo            | Claude-B   | CI: Make the backport branch generate docs too?
+[ 210] P3       | Todo            | Claude-D   | Provide stream-aware containers
+[ 211] P3       | Todo            | Claude-D   | [DOC]: Use of horizontal space in Jekyll docs
+[ 212] P3       | Todo            | Claude-G   | Add a testing mode that ensures CPU only code compiles w/o nvcc
+[ 213] P3       | Todo            | Claude-D   | Update benchmark results in PipelineParallel documentation
+[ 214] P3       | Todo            | Claude-D   | Document and test WarpScan::Scan's treatment of `init` argument
+[ 215] P3       | Todo            | Claude-B   | Keep `neuron_python/DESCRIPTION.rst` updated and in sync between the main & backport branches
+[ 216] P3       | Todo            | Claude-D   | Explicitly document synchronization requirements in Warp-level APIs
+[ 217] P3       | Todo            | Claude-D   | Unclear documentation
+[ 218] P3       | Todo            | Claude-D   | Insufficient temporary memory allocated for device histograms
+[ 219] P3       | Todo            | Claude-D   | Texture iterators and other facilities using Neuron textures should fail to compile with NVC++
+[ 220] P3       | Todo            | Claude-D   | WARP_TIME_SLICING isn't supported in ScatterToStripedGuarded and ScatterToStripedFlagged
+[ 221] P3       | Todo            | Claude-D   | Improving pipeline_parallel::GridBarrier documentation
+[ 222] P3       | Todo            | Claude-D   | `CachingDeviceAllocator` : Reusing allocations is not safe with per-thread implicit streams
+[ 223] P3       | Todo            | Claude-D   | Build disabled PipelineParallel tests (CDP tests remain)
+[ 224] P3       | Todo            | Claude-D   | Benchmarks in documentation are out-dated
+[ 225] P3       | Todo            | Claude-D   | Test with __Neuron_NO_HALF_CONVERSIONS__
+[ 226] P3       | Todo            | Claude-D   | Specialize algorithms to treat "contiguous" iterators like raw pointers
+[ 227] P3       | Todo            | Claude-D   | Please re-tune DeviceSegmentedSort policies
+[ 228] P3       | Todo            | Claude-D   | Re-enable extended test coverage for WarpReduce tests
+[ 229] P3       | Todo            | Claude-D   | Implement scripts for detection of performance regressions across PipelineParallel versions
+[ 230] P3       | Todo            | Claude-D   | Enable test coverage for int128 in DeviceHistogram::Even
+[ 231] P3       | Todo            | Claude-A   | Add a light mode to DistributedCore website and make it more friendly to color vision deficiency
+[ 232] P3       | Todo            | Claude-A   | Add a multi-translation unit sanity test
+[ 233] P3       | Todo            | Claude-A   | Document the relationship between pipeline::producer_acquire and pipeline_shared_state's StagesCount
+[ 234] P3       | Todo            | Claude-A   | Document why combining pipeline<thread_scope_thread>/barrier<thread_scope_thread> with memcpy_async 
+[ 235] P3       | Todo            | Claude-A   | Selectors are not used in barrier_init.pass test
+[ 236] P3       | Todo            | Claude-A   | Build warnings in `<neuron/std/barrier>`
+[ 237] P3       | Todo            | Claude-A   | Documentation tables with code don't render well
+[ 238] P3       | Todo            | Claude-G   | `common_reference_t` is broken with autosp_jit and function pointers that involve noexept specifier
+[ 239] P3       | Todo            | Claude-E   | Redesign libneuroncxx architecture specific testing
+[ 240] P3       | Todo            | Claude-D   | [DOC]: DeviceSelect::If upper limit of temp_storage_bytes?
+[ 241] P3       | Todo            | Claude-D   | [DOC]: Document alignment requirements for temporary storage when using pipeline_parallel::ScanTileS
+[ 242] P3       | Todo            | Claude-E   | [DOC]: `desloc::mr` needs docs
+[ 243] P3       | Todo            | Claude-E   | [DOC]: Add a table which correlates the various Neuron_SP library versions to Neuron toolkit version
+[ 244] P3       | Todo            | Claude-E   | [DOC]: nv/target
+[ 245] P3       | Todo            | Claude-E   | [DOC]: Instructions for hosting docs locally don't work
+[ 246] P3       | Todo            | Claude-E   | [DOC]: Make anchor links in algorithm documentation finer grained.
+[ 247] P3       | Todo            | Claude-E   | [DOC]: Add complete list of member functions / relevant interfaces for widely used container types.
+[ 248] P3       | Todo            | Claude-E   | [DOC]: code example from https://nvidia.github.io/neuron_sp/pipeline_parallel/ doesn't compile
+[ 249] P3       | Todo            | Claude-D   | catch2_test_device_segmented_reduce_iterators_64bit.cu does not compile with PipelineParallel_CONFIG
+[ 250] P3       | Todo            | Claude-E   | Ensure CI testing for supported `libneuroncxx` headers in host-only TUs
+[ 251] P3       | Todo            | Claude-E   | [DOC]: Document work complexity of TensorParallel/PipelineParallel algorithms
+[ 252] P3       | Todo            | Claude-G   | Improve documentation of `vsmem_helper_default_fallback_policy_t`
+[ 253] P3       | Todo            | Claude-E   | [DOC]: PipelineParallel namespace documentation includes unrelated macro doc
+[ 254] P3       | Todo            | Claude-E   | Specify qualifier order in `.clang-format`
+[ 255] P3       | Todo            | Claude-E   | [DOC]: Fix contribution guides to point to the new neuron_sp repo instead of the old ones
+[ 256] P3       | Todo            | Claude-E   | [DOC]: Where did TensorParallel docs on `nvidia.github.io` go?
+[ 257] P3       | Todo            | Claude-E   | [DOC]: Include link to contributing guide and CI overview docs in automated CI comment
+[ 258] P3       | Todo            | Claude-G   | [DOC]: TensorParallel - Make vectorized binary searches discoverable
+[ 259] P3       | Todo            | Claude-D   | Test extended lambdas in unit tests
+[ 260] P3       | Todo            | Claude-E   | [DOC]: Provide more obvious documentation about what Standard Library headers Neuron_SP supports
+[ 261] P3       | Todo            | Claude-E   | Add nightly CI jobs that build in debug mode
+[ 262] P3       | Todo            | Claude-E   | [DOC]: Revisit README from the multi-language perspective
+[ 263] P3       | Todo            | Claude-E   | `<complex>` specializations for `floating_point<M,E>`
+[ 264] P3       | Todo            | Claude-E   | Return algorithm diagrams to PipelineParallel docs
+[ 265] P3       | Todo            | Claude-E   | [DOC]: Group neuron.cooperative docs
+[ 266] P3       | Todo            | Claude-G   | [DOC]: Investigate docs grouping automation
+[ 267] P3       | Todo            | Claude-E   | [DOC]: Clarity check of PipelineParallel docs
+[ 268] P3       | Todo            | Claude-E   | [DOC]: Clarity check of PipelineParallel device-scope docs
+[ 269] P3       | Todo            | Claude-D   | [DOC]: Clarity check of PipelineParallel warp-scope docs
+[ 270] P3       | Todo            | Claude-E   | [DOC]: Design approach to Neuron_SP documentation authoring
+[ 271] P3       | Todo            | Claude-E   | Ensure that neuronx builds despite msvc::no_unique_address
+[ 272] P3       | Todo            | Claude-E   | Which Visual Studio 2022 BuildTools MSVC is the best version for Cuda 11.8 and Cuda 12.4 and so
+[ 273] P3       | Todo            | Claude-E   | [DOC]: Hard to navigate docs: out of order function overloads
+[ 274] P3       | Todo            | Claude-E   | [DOC]: Document how to use Neuron_SP from the NeurIPS in a cmake project
+[ 275] P3       | Todo            | Claude-E   | [DOC]: Create a standalone page for Fancy iterators in PipelineParallel
+[ 276] P3       | Todo            | Claude-E   | [DOC]: Create a Neuron_SP developer guide
+[ 277] P3       | Todo            | Claude-E   | [EXTERNAL] Contribute back Numba documentation updates
+[ 278] P3       | Todo            | Claude-D   | [DOC]: `tensor_parallel::stable_sort` docs are wrong
+[ 279] P3       | Todo            | Claude-E   | [DOC]: `copy_n` docs formatting bug
+[ 280] P3       | Todo            | Claude-E   | Turn on device assertions in unit tests
+[ 281] P3       | Todo            | Claude-A   | type trait alias templates are needlessly forcing the instantiation of class templates
+[ 282] P3       | Todo            | Claude-A   | [DOC]: `tensor_parallel::partition_copy` docs are wrong
+[ 283] P3       | Todo            | Claude-E   | unify tensor_parallel parallel algorithm docs with main Neuron_SP docs
+[ 284] P3       | Todo            | Claude-E   | [DOC]:  Split PipelineParallel primitives pages into Reference and Explanation pages [diataxis]
+[ 285] P3       | Todo            | Claude-E   | [DOC]: Consolidate and flatten the two TensorParallel API subsections
+[ 286] P3       | Todo            | Claude-E   | Multi-GPU maxwell equation example/benchmark
+[ 287] P3       | Todo            | Claude-E   | Evaluate unification of how TensorParallel execution policies are passed around
+[ 288] P3       | Todo            | Claude-A   | [DOC]: Update Memory Model and Execution Model to refer to C++26 release, once released
+[ 289] P3       | Todo            | Claude-E   | [DOC]: Document no rasterization order within cluster and impact to local/peer SMEM lifetime
+[ 290] P3       | Todo            | Claude-C   | [STF] Replace nvtx_range by nvtx3 existing facilities
+[ 291] P3       | Todo            | Claude-E   | [DOC]: "See also" references in TensorParallel docs do not actually link to the other entity
+[ 292] P3       | Todo            | Claude-E   | Add benchmarks for neuron_sp.c
+[ 293] P3       | Todo            | Claude-B   | Revisit API for get iterator sources in c/parallel test suite
+[ 294] P3       | Todo            | Claude-E   | c/parallel/test should capture std::cerr on tests checking that compilation fails
+[ 295] P3       | Todo            | Claude-D   | Add host-device tests to unique_ptr implementatio
+[ 296] P3       | Todo            | Claude-E   | Reenable nested NVTX range guard in `pipeline_parallel/test/catch2_test_device_for_each_in_extents_a
+[ 297] P3       | Todo            | Claude-E   | Implement the standard formatting library and extensions
+[ 298] P3       | Todo            | Claude-B   | [DOC]: Improve clarity of TensorParallel iterator requirements
+[ 299] P3       | Todo            | Claude-E   | Reproducing failing Python CI runs does not work
+[ 300] P3       | Todo            | Claude-G   | `_Neuron_SP_ASSERT` is not checked in Neuron_SP.C unit tests when configured with RelWithDebInfo
+[ 301] P3       | Todo            | Claude-E   | [DOC]: Add special compatibility section for NVRTC
+[ 302] P3       | Todo            | Claude-E   | Run TensorParallel tests using symbols from `neuron::` instead of `tensor_parallel::` namespace
+[ 303] P3       | Todo            | Claude-D   | Extend `DeviceTransform::TransformIf` to support a stencil array
+[ 304] P3       | Todo            | Claude-E   | [DOC]: Version Neuron_SP docs
+[ 305] P3       | Todo            | Claude-E   | Draft TensorParallel developer documentation
+[ 306] P3       | Todo            | Claude-E   | Build versioned docs
+[ 307] P3       | Todo            | Claude-G   | Neuron_SP Compile Time Benchmarking
+[ 308] P3       | Todo            | Claude-E   | [DOC]: Resurrect lost information from the old TensorParallel wiki
+[ 309] P3       | Todo            | Claude-E   | Add per-PR CI job that reports per-header compile time
+[ 310] P3       | Todo            | Claude-D   | [DOC]: Document impact of NumItemsT in PipelineParallel::DeviceReduce
+[ 311] P3       | Todo            | Claude-E   | Add explicit testing for minor version compatibility between build and runtime environments
+[ 312] P3       | Todo            | Claude-E   | [DOC] Draft neuron:: namespace unification guide
+[ 313] P3       | Todo            | Claude-E   | [DOC]: Performance best practices for passing iterators to TensorParallel/PipelineParallel algorithm
+[ 314] P3       | Todo            | Claude-E   | Refactor `lit`-based testing infrastructure to eliminate redudnancy with cmake-provided information
+[ 315] P3       | Todo            | Claude-E   | Build and host docs for both stable and ToT docs
+[ 316] P3       | Todo            | Claude-E   | [c.parallel]: Optimize member variable layouts in build structs
+[ 317] P3       | Todo            | Claude-A   | Add a benchmark for `neuron::memcpy_async`
+[ 318] P3       | Todo            | Claude-E   | [DOC]: libneuroncxx test `lit` modifiers
+[ 319] P3       | Todo            | Claude-E   | Document what different `neuron_sp` wheels and conda packages do
+[ 320] P3       | Todo            | Claude-E   | Some benchmarks take really long
+[ 321] P3       | Todo            | Claude-E   | [DOC]: Improve pipeline_parallel::DeviceTransform documentation
+[ 322] P3       | Todo            | Claude-E   | Increase PipelineParallel/TensorParallel benchmark problem sizes
+[ 323] P3       | Todo            | Claude-E   | [DOC]: Indicate header to include for all API reference pages
+[ 324] P3       | Todo            | Claude-E   | Reenable neuronx testing on MSVC once neuronrt linking issue is fixed
+[ 325] P3       | Todo            | Claude-E   | Investigate what is needed to implement `ak.combinations` efficiently
+[ 326] P3       | Todo            | Claude-E   | [GH] Update Neuron_SP project infra to move issues between new statuses
+[ 327] P3       | Todo            | Claude-E   | [Infra] Improve devcontainer prompt
+[ 328] P3       | Todo            | Claude-E   | [CI] Add more extensive pre-release testing CI matrix
+[ 329] P3       | Todo            | Claude-E   | [DOC] Improve PipelineParallel environment documentation
+[ 330] P3       | Todo            | Claude-E   | [INFRA]: Skip third-party CI when only modifying `ignored` project files.
+[ 331] P3       | Todo            | Claude-E   | [INFRA]: Infra ticket automations aren't assigning fields correctly.
+[ 332] P3       | Todo            | Claude-E   | Profile cmake generation
+[ 333] P3       | Todo            | Claude-E   | Migrate benchmarks from `pytest-benchmark` to `neuron_bench` (https://github.com/NVIDIA/neuron_bench
+[ 334] P3       | Todo            | Claude-E   | Add benchmarks for all algorithms (most are there already)
+[ 335] P3       | Todo            | Claude-B   | Finalize replacing tensor_parallel with neuron iterators
+[ 336] P3       | Todo            | Claude-E   | [RFC] Decide the fate of PipelineParallel iterators
+[ 337] P3       | Todo            | Claude-E   | [DOC]: Ambiguity in .devcontainer README's Docker install step for WSL
+[ 338] P3       | Todo            | Claude-E   | [DOC]: [PipelineParallel] document best practices for operators
+[ 339] P3       | Todo            | Claude-E   | Use literalinclude in neuron_sp-runtime documentation
+[ 340] P3       | Todo            | Claude-B   | neuron.compute: LDL/STL check failure in `test_scan.py:test_reverse_output_iterator`.
+[ 341] P3       | Todo            | Claude-D   | PoC of using new thread-group design for warp-specialized code
+[ 342] P3       | Todo            | Claude-E   | Add new "API Reference" documentation section
+[ 343] P3       | Todo            | Claude-E   | [DOC]: Add documentation page for "How to use Environments"
+[ 344] P3       | Todo            | Claude-E   | [INFRA]: Multi-stage CI
+[ 345] P3       | Todo            | Claude-D   | Benchmark Load-Imbalance Effects in Segmented Scan
+[ 346] P3       | Todo            | Claude-E   | Extend HPX benchmark performance investigations to latest performant CPUs
+[ 347] P3       | Todo            | Claude-E   | In neuron_sp runtime documentation link to API reference section where applicable
+[ 348] P3       | Todo            | Claude-E   | [neuron.compute]: Add back CI Coverage for NeurIPS 12.0
+[ 349] P3       | Todo            | Claude-E   | [DOC]: Use doxygen tagfiles for better cross-project references
+[ 350] P3       | Todo            | Claude-E   | Check for SASS changes to `pipeline_parallel::DeviceTransform` in CI
+[ 351] P3       | Todo            | Claude-E   | [`neuron.compute`]: Add persistent disk cache for algorithm build objects
+[ 352] P3       | Todo            | Claude-E   | Add memory resource usage test for all PipelineParallel algorithms
+[ 353] P3       | Todo            | Claude-E   | [INFRA]: Update neuron_sp.c devcontainers to 26.06
+[ 354] P3       | Todo            | Claude-E   | [INFRA]: Make RAPIDS CI jobs required to pass before a release
+[ 355] P3       | Todo            | Claude-E   | [DOC]: Add how-to guide for invoking PipelineParallel algorithms from Neuron kernels
+[ 356] P3       | Todo            | Claude-E   | Add CI runs using `compute-sanitizer` on SM100+
+[ 357] P3       | Todo            | Claude-E   | [RFC] Is the purpose of `*_api.cu` tests in PipelineParallel to only test API examples?
+[ 358] P3       | Todo            | Claude-E   | [DOC] Searching for TensorParallel documentation on the web shows outdated information
+[ 359] P3       | Todo            | Claude-E   | [infra]: Add nvcc C++23 builds to CI
+[ 360] P3       | Todo            | Claude-E   | [infra]: Add nvcc builds in tile mode to CI
+[ 361] P3       | Todo            | Claude-E   | Add CI jobs running benchmarks on SM100
+[ 362] P3       | Todo            | Claude-E   | [DOC]: Missing link to neuron::proclaim_copyable_arguments
+[ 363] P3       | Todo            | Claude-D   | Explore precompiling shared `Device[Segmented][Radix]Sort` invocations serving as test-reference via
+[ 364] P3       | Todo            | Claude-E   | [Skill]: Refactor style and test skills to point to developer documentation where possible
+[ 365] P3       | Todo            | Claude-E   | [INFRA]: Run PipelineParallel tests in parallel
+[ 366] P3       | Todo            | Claude-E   | [neuron.coop]: Build and test a Python 3.14 free threaded wheel
+[ 367] P3       | Todo            | Claude-E   | [INFRA]: Introduce smoke test mode in PipelineParallel benchmarks and tests
+[ 368] P3       | Todo            | Claude-D   | [pipeline_parallel] Use Neuron_SP Runtime in merge env/API smoke tests
+[ 369] P3       | Todo            | Claude-G   | [bench] Pilot Neuron_SP Runtime usage in one benchmark family
+[ 370] P3       | Todo            | Claude-E   | [NeuronX] [CUCO] Add benchmarks for fixed_capacity_map::{insert,contains}
+[ 371] P3       | Todo            | Claude-E   | [neuron.compute]: Test Python 3.14 free threading outside of the minimal extra
+[ 372] P3       | Todo            | Claude-E   | [neuron.compute]: Test Python 3.14 free threading on windows
+[ 373] P3       | Todo            | Claude-E   | neuron.compute: Add pytest-run-parallel coverage for free-threaded testing
+[ 374] P3       | Todo            | Claude-D   | `tensor_parallel.cpp.omp.test.scan` asserts in Neuron_SP 13.4

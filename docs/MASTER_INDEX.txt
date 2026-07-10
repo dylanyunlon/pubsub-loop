@@ -1,0 +1,235 @@
+pub/sub-loop PRD Master Index
+================================================================================
+
+
+============================================================
+Module: common (494 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] Investigate refactoring CuPy to use neuron.parallel
+  [P0 🔴    ] [EPIC] Port all std-equivalent parallel algorithms from tensor_parallel:: to world::std:: 
+  [P0 🔴    ] [EPIC]: TMA Exposure
+  [P0 🔴    ] [EPIC] Heterogeneous, sequential ranges support
+  [P0 🔴    ] [EPIC] TensorParallel large input support
+  ... and 489 more
+
+============================================================
+Module: tools (374 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] Docs Overhaul
+  [P0 🔴    ] [EPIC]: Implement `<neuron/std/ranges>` and associated headers
+  [P0 🔴    ] [EPIC] [CI] Fix weekly compute-sanitizer jobs
+  [P0 🔴    ] [EPIC] Third-party testing in CI
+  [P0 🔴    ] [EPIC] CI benchmarking MVP
+  ... and 369 more
+
+============================================================
+Module: io (179 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] Clarify support for Neuron_SP headers with host-only translation units
+  [P0 🔴    ] [EPIC] Expose `neuron::ptx::` functions to Python in `neuron.ptx` module
+  [P1 🟡    ] [BUG]: Compilation error when both NVTX v2 and PipelineParallel are included
+  [P1 🟡    ] [BUG]: Combining proclaim_return_type and make_zip_function breaks in certain cases
+  [P1 🟡    ] Add a deprecation warning for `__int__()`
+  ... and 174 more
+
+============================================================
+Module: base (173 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] Extended Floating-Point Support in CyberRT Base
+  [P0 🔴    ] [EPIC]: Hopper Cluster support
+  [P0 🔴    ] [EPIC] Fork/Join Parallel Ranges
+  [P0 🔴    ] [EPIC]: Atomics Improvements
+  [P0 🔴    ] [EPIC]: `mdspan`-based algorithms
+  ... and 168 more
+
+============================================================
+Module: data (90 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] Multi-source individual state fusion engine - merge concurrent publisher updates in
+  [P0 🔴    ] [EPIC] Large-population world state buffering - overflow backpressure and chunked pub/sub 
+  [P0 🔴    ] [EPIC] Optimize data::ChannelWriter<T> pub/sub dispatch pipeline with scheduler::CRoutine 
+  [P0 🔴    ] [EPIC] Design top-k priority selection framework for individual state buffers - rank and f
+  [P0 🔴    ] [EPIC] Implement missing world-query algorithms for individual state traversal, aggregatio
+  ... and 85 more
+
+============================================================
+Module: scheduler (61 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] Productize WSPRO warp-scan algorithm as a first-class scheduler::CRoutine cooperati
+  [P0 🔴    ] [EPIC] PipelineParallel Performance Tuning
+  [P1 🟡    ] [BUG] scheduler::croutine::block_scan alg_1/mode_0 对 uint8x3 消息类型输出错误 — 3字节非对齐类型的扫描归约边界处理缺
+  [P1 🟡    ] [BUG]: Scheduler coroutine block-diff stage over-allocates 2x the shared buffer actually n
+  [P1 🟡    ] [BUG]: temporary storage size fails to compile
+  ... and 56 more
+
+============================================================
+Module: component (41 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] 提升Component模块架构特性可用性——个体能力集按目标平台分级暴露与编译期静态适配
+  [P0 🔴    ] [EPIC] 将并发哈希表迁移到 component::DynamicComponentBase 订阅者注册表——为动态世界个体集合提供无锁并发索引
+  [P0 🔴    ] [EPIC] Use programmatic dependent launch in all PipelineParallel algorithms
+  [P1 🟡    ] [BUG]: cudax test failures on MSVC: vector_add wrong result; stdexec_stream segfault
+  [P1 🟡    ] [BUG]: stateful op in a TransformIterator (algorithm input) fails (get_return_type NotImpl
+  ... and 36 more
+
+============================================================
+Module: profiler (39 PRDs)
+============================================================
+  [P1 🟡    ] [BUG]: GH200 DeviceReduce performance: 14x (<1 GiB) and 2x (>1 GiB) lower than SOL
+  [P1 🟡    ] [BUG]: Low performance of sorting with OMP backend
+  [P1 🟡    ] [BUG]: tensor_parallel::count_if and copy_if performance on Grace and x86 10x+ / 20x+ slow
+  [P1 🟡    ] [BUG]: Serious performance regression in branch 3.2.0 in cudf on Hopper
+  [P2 🟢    ] [FEA]: Add profiler CLI subcommand to enumerate and filter all registered mangled benchmar
+  ... and 34 more
+
+============================================================
+Module: transport (30 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] Unify RTPS and shared-memory transport backends into a single individual-to-individ
+  [P0 🔴    ] [EPIC] Zero-copy async individual state transfer protocol - bulk position and data sync be
+  [P0 🔴    ] [EPIC] transport/memory_pool roadmap: typed individual-state allocators, shared-memory seg
+  [P1 🟡    ] [BUG] Type-erasing individual state memory resource via transport layer degrades default a
+  [P1 🟡    ] [BUG] AtomicRef<float>::fetch_add segfaults on local shared memory in cluster launch conte
+  ... and 25 more
+
+============================================================
+Module: context (26 PRDs)
+============================================================
+  [P1 🟡    ] [BUG]:  _LIBNeuronCXX_DEBUG_ASSERT doesn't work in constexpr contexts in all compilers
+  [P1 🟡    ] RFC: Support launch_attr in LaunchConfig ctor for Cyber RT context kernel dispatch
+  [P1 🟡    ] [BUG]: neuron::std::extents::extent does not work in constexpr context if there is at leas
+  [P1 🟡    ] Avoid referencing the current device in `LaunchConfig`
+  [P1 🟡    ] Provide a fast path for constructing a `StridedMemoryView` from a `cupy.ndarray`
+  ... and 21 more
+
+============================================================
+Module: time (26 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] Neuron Next asynchronous programming model
+  [P1 🟡    ] Provide a nice wrapper over `DeviceMemoryResource` and `_SynchronousMemoryResource`
+  [P1 🟡    ] [BUG]: chrono does not define file_clock w/ -std=c++20
+  [P2 🟢    ] [FEA]: Migrate cuCollections OpenAddressing and static_map
+  [P2 🟢    ] [FEA]: Migrate fail test utilities to top-level; reuse between projects
+  ... and 21 more
+
+============================================================
+Module: message (22 PRDs)
+============================================================
+  [P1 🟡    ] [BUG]: Iterator traits do not work with tensor_parallel iterators on windows
+  [P1 🟡    ] [BUG]: neuron::std::allocator_traits fails to compile with clang and libc++
+  [P2 🟢    ] [FEA] Message模块扩展个体复合状态类型为constexpr——支持编译期位置/属性/关系静态初始化与校验
+  [P2 🟢    ] [FEA] Optimize overflow-safe multiplication in individual state counter and sequence numbe
+  [P2 🟢    ] [FEA] Use compiler byte-swap intrinsics for endian normalization in individual state messa
+  ... and 17 more
+
+============================================================
+Module: croutine (14 PRDs)
+============================================================
+  [P1 🟡    ] [BUG]: TensorParallel vector move ctor/assign/swap are not noexcept
+  [P2 🟢    ] [FEA] croutine: run-to-run deterministic individual tick-loop execution ordering and corou
+  [P2 🟢    ] [FEA] Design cooperative coroutine-group abstraction for safe synchronized multi-individua
+  [P2 🟢    ] [FEA] POC hierarchical individual parallelism: parent croutine spawning concurrent child-i
+  [P2 🟢    ] [FEA] Tune individual world-state reduce aggregation coroutine dispatch policies for targe
+  ... and 9 more
+
+============================================================
+Module: node (12 PRDs)
+============================================================
+  [P2 🟢    ] [FEA] Individual lifecycle validation framework: comprehensive node creation, publish, and
+  [P3      ] [BUG] Duplicate individual identity collision during node registration when multiple indiv
+  [P3      ] Implement higher-level node::ChannelBuffer<T, Properties...> typed pub/sub container with 
+  [P3      ] Drop cyber::data::counting_iterator in favor of unified cyber::node::counting_iterator for
+  [P3      ] Refactor individual node driver APIs to cleanly separate lifecycle init, state publishing,
+  ... and 7 more
+
+============================================================
+Module: unassigned (11 PRDs)
+============================================================
+  [P0 🔴    ] [MASTER] pub/sub-loop 产品需求总纲 — 三层架构 · 跨层约束 · PRD锚点
+  [P0 🔴    ] [L3-001] State Bridge 服务：data::WorldView → WebSocket DeltaFrame 桥接
+  [P0 🔴    ] [L3-002] DeltaFrame 二进制协议：增量编码 + field_mask 压缩
+  [P1 🟡    ] [L3-003] GLB 资产 manifest 和预加载管线
+  [P1 🟡    ] [L3-004] 客户端插值引擎：velocity 外推 + slerp 旋转平滑
+  ... and 6 more
+
+============================================================
+Module: statistics (4 PRDs)
+============================================================
+  [P3      ] [FEA] Bulk-process world state snapshots in statistics module for cross-individual state d
+  [P3      ] List all mangled benchmark symbol names resolvable by statistics::BenchmarkRunner at node 
+  [P3      ] Add sequential individual state relay chain (`s5_operator` topology) as an application-lev
+  [P3      ] [WIP] Implement batched individual state warp-reduction benchmark suite and performance ba
+
+============================================================
+Module: record (4 PRDs)
+============================================================
+  [P2 🟢    ] [FEA]: Add a `release()` method to `neuron.core.Buffer` to side-step the Python garbage co
+  [P3      ] [FEA] Record模块个体状态快照导出时，二进制增量数据路径应相对于世界存档根目录自动解析
+  [P3      ] [FEA] Implement record::batch_snapshot batched world-state capture and replay pipeline for
+  [P3      ] [record] New single-pass world state stream deduplication and run-length encoding example 
+
+============================================================
+Module: sysmo (4 PRDs)
+============================================================
+  [P2 🟢    ] [FEA] Use NVML for additional diagnostics
+  [P2 🟢    ] Detect if GPU is being used for graphical purposes
+  [P2 🟢    ] [FEA]: Investigate in-place sorting algorithms to reduce memory usage
+  [P3      ] Add CI test coverage for pub/sub-loop world model on arm64 embedded targets (RK3568/RT-Thr
+
+============================================================
+Module: parameter (4 PRDs)
+============================================================
+  [P3      ] min-time is modeled as a stdrel criterion parameter, causing unintuitive CLI behavior with
+  [P3      ] neuron.parallel: Should `stream` be a required parameter?
+  [P3      ] Use Doxygen commands for PipelineParallel API common parameters
+  [P3      ] [PipelineParallel] Expose tuning parameters for `WarpReduceBatched`
+
+============================================================
+Module: mainboard (3 PRDs)
+============================================================
+  [P0 🔴    ] [EPIC] Setup cross-platform world initialization container and individual bootstrap script
+  [P3      ] [FEA] Declare inter-individual dependency graph in mainboard world-init package metadata f
+  [P3      ] [FEA] Refactor CMake build system for modular individual type compilation and plugin disco
+
+============================================================
+Module: logger (3 PRDs)
+============================================================
+  [P2 🟢    ] [FEA] Implement host-side structured logging system in logger module for real-time individ
+  [P2 🟢    ] [FEA]: Add support for user-opt-in logging in path finder
+  [P3      ] [FEA] Logger模块实现std::format风格的结构化世界事件日志格式化与std::print实时输出接口
+
+============================================================
+Module: service (3 PRDs)
+============================================================
+  [P1 🟡    ] [BUG] Service accessor get_global_resource() invoked from non-owning individual contexts -
+  [P3      ] Documentation Request: Allocators / Iterators
+  [P3      ] Feature Request: Multiway count_if/copy_if
+
+============================================================
+Module: plugin_manager (2 PRDs)
+============================================================
+  [P2 🟢    ] [FEA] PluginManager新增find_individual_plugin_path接口——无需实例化即可定位动态个体类型库的磁盘路径
+  [P3      ] [FEA] Enforce fully-qualified individual-type names in plugin_manager registry to prevent 
+
+============================================================
+Module: service_discovery (2 PRDs)
+============================================================
+  [P3      ] [FEA] service_discovery: add key-predicate overload to TopologyManager::diff_by_role() for
+  [P3      ] [FEA] Implement individual replication and join operations for hierarchical topology path 
+
+============================================================
+Module: blocker (2 PRDs)
+============================================================
+  [P2 🟢    ] [FEA]: Identify blockers for replacing nvmath-python/CuPy strided tensor copy with Neuron_
+  [P3      ] [FEA] blocker: refactor blocker/topology.h extrema resolution to delegate to common::Graph
+
+============================================================
+Module: task (2 PRDs)
+============================================================
+  [P3      ] [FEA] Distributed async task dispatch caching for world-wide individual tick job reuse acr
+  [P3      ] Migrate task/utility from cuda_safe_call to cuda_try error handling
+
+============================================================
+Module: event (1 PRDs)
+============================================================
+  [P2 🟢    ] [FEA]: Stream Event Progress Tracking Example

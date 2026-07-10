@@ -1,0 +1,6 @@
+=== Module: parameter === (4 PRDs)
+
+[   1] P3       | Needs Triage    | Claude-B   | min-time is modeled as a stdrel criterion parameter, causing unintuitive CLI behavior with other sto
+[   2] P3       | Todo            | Claude-E   | neuron.parallel: Should `stream` be a required parameter?
+[   3] P3       | Todo            | Claude-D   | Use Doxygen commands for PipelineParallel API common parameters
+[   4] P3       | Todo            | Claude-D   | [PipelineParallel] Expose tuning parameters for `WarpReduceBatched`

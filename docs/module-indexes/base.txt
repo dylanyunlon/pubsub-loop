@@ -1,0 +1,175 @@
+=== Module: base === (173 PRDs)
+
+[   1] P0 🔴     | Todo            | Claude-A   | [EPIC] Extended Floating-Point Support in CyberRT Base
+[   2] P0 🔴     | Todo            | Claude-A   | [EPIC]: Hopper Cluster support
+[   3] P0 🔴     | Todo            | Claude-A   | [EPIC] Fork/Join Parallel Ranges
+[   4] P0 🔴     | Todo            | Claude-A   | [EPIC]: Atomics Improvements
+[   5] P0 🔴     | Todo            | Claude-E   | [EPIC]: `mdspan`-based algorithms
+[   6] P1 🟡     | Blocked         | Claude-A   | Evaluate feasibility of adding `pool_memory_resource`
+[   7] P1 🟡     | In Progress     | Claude-A   | [FEA] Base模块新增get_aligned_state_layout工具——自动计算个体状态结构对齐字节数以满足零拷贝pub/sub传输要求
+[   8] P1 🟡     | Todo            | Claude-A   | [BUG]: GPU semaphore fairness violation in Cyber RT base synchronization layer
+[   9] P1 🟡     | Todo            | Claude-G   | [BUG]: Using neuron::atomic_ref fails when using autosp_jit and --device-debug
+[  10] P1 🟡     | Todo            | Claude-A   | [BUG]: definition of `neuronx::device::attrs::memory_pool_supported_handle_types_t::fabric` is UB
+[  11] P1 🟡     | Todo            | Claude-E   | [BUG]: Including neuron/std/atomic disables deprecation warnings in MSVC 2019
+[  12] P1 🟡     | Todo            | Claude-A   | [BUG] atomics should always fully qualify when calling internal functions
+[  13] P1 🟡     | Todo            | Claude-D   | [BUG]: `cooperative_groups::thread_block::sync()` produces incorrect results on SM_120 with Neuron 1
+[  14] P1 🟡     | Todo            | Claude-E   | [BUG]: PipelineParallel environment-based DeviceReduce tests fail kernel-allowlist check on MSVC + N
+[  15] P2 🟢     | Done            | Claude-D   | [FEA]: Prepare productization of BlockLoadToShared
+[  16] P2 🟢     | In Progress     | Claude-A   | [FEA] Pluggable individual state memory allocator framework - shared-memory pool, intra-process pool
+[  17] P2 🟢     | In Progress     | Claude-D   | [FEA]: Optimize BlockReduce
+[  18] P2 🟢     | In Progress     | Claude-A   | [FEA] Implement lock-free find-first-set-bit individual state flag scanner in base module for zero-l
+[  19] P2 🟢     | In Progress     | Claude-A   | [FEA]: Implement P3323R1 DR11/20: cv-qualified types in `std::atomic` and `std::atomic_ref`
+[  20] P2 🟢     | In Progress     | Claude-D   | [FEA]: Ensure that PSTL algorithms use the environment based overloads of PipelineParallel device AP
+[  21] P2 🟢     | In Progress     | Claude-B   | [Task]: Port base module pub/sub-loop bootstrap to freestanding cccl.c v2 on Windows
+[  22] P2 🟢     | In Review       | Claude-B   | [FEA]: Add support for extended floating-point types in base message serialization layer
+[  23] P2 🟢     | In Review       | Claude-A   | [FEA]: Implement P0493R5 Atomic maximum and minimum in base atomics
+[  24] P2 🟢     | In Review       | Claude-A   | [FEA]: Implement P2835R7 and P3936R1 `std::atomic_ref::address()` in base
+[  25] P2 🟢     | Needs Triage    | Claude-D   | [FEA]: Make PipelineParallel block algorithms usable with neuron::std::array
+[  26] P2 🟢     | Needs Triage    | Claude-B   | Add a `zip_axis` / `tuple_axis` that iterates through multiple parameter axes in lockstep
+[  27] P2 🟢     | Needs Triage    | Claude-D   | [FEA]: Use BlockLoadToShared in pipeline_parallel::DeviceFind
+[  28] P2 🟢     | Todo            | Claude-A   | [FEA]: Multi-dimensional TMA exposure
+[  29] P2 🟢     | Todo            | Claude-A   | [FEA]: Add `thread_scope_cluster` and implement `atomic(_ref)<thread_scope_cluster>`
+[  30] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement `<mutex>`
+[  31] P2 🟢     | Todo            | Claude-D   | [FEA]: Relax shuffle-based warp exchange requirements
+[  32] P2 🟢     | Todo            | Claude-E   | [FEA]: internally __restrict__ qualified `neuron::std::span`
+[  33] P2 🟢     | Todo            | Claude-A   | [FEA]: neuron::barrier:arrival_token should not be constructible from integral types
+[  34] P2 🟢     | Todo            | Claude-E   | [FEA]: Automate documentation for DistributedCore Standard Library header support
+[  35] P2 🟢     | Todo            | Claude-E   | [FEA]: sm_90 cluster scope
+[  36] P2 🟢     | Todo            | Claude-A   | [FEA]: cluster-scope atomics
+[  37] P2 🟢     | Todo            | Claude-A   | [FEA]: cluster-scope latch
+[  38] P2 🟢     | Todo            | Claude-A   | [FEA]: cluster-scope semaphores
+[  39] P2 🟢     | Todo            | Claude-A   | [FEA]: cluster-scope barrier
+[  40] P2 🟢     | Todo            | Claude-A   | [FEA]: atomic_flag with scope
+[  41] P2 🟢     | Todo            | Claude-A   | [FEA]: Refactor barrier __try_wait internals to atomics in Cyber RT base sync primitives
+[  42] P2 🟢     | Todo            | Claude-C   | [FEA]: Define policy for non-standard CUDA extensions in Cyber RT base layer
+[  43] P2 🟢     | Todo            | Claude-E   | [FEA]: Add codegen diff check for libcudacxx headers in Cyber RT base CI
+[  44] P2 🟢     | Todo            | Claude-D   | [FEA]: Block-level `TransformReduce`
+[  45] P2 🟢     | Todo            | Claude-D   | [FEA]: Specialize `Block{Load,Store[,Exchange]}` when `ITEMS_PER_THREAD` is `1`
+[  46] P2 🟢     | Todo            | Claude-D   | [FEA]: Let block-algorithms take const arrays for input parameters
+[  47] P2 🟢     | Todo            | Claude-D   | [FEA]: Avoiding unnecessary work in BlockHistogram
+[  48] P2 🟢     | Todo            | Claude-D   | [FEA]: Support `block_aggregate` in python neuron_cooperative.block.exclusive_sum
+[  49] P2 🟢     | Todo            | Claude-A   | [FEA]: Improve performance of atomic_ref
+[  50] P2 🟢     | Todo            | Claude-G   | [FEA]: Automate generating release notes structured based on required PR labels
+[  51] P2 🟢     | Todo            | Claude-D   | [FEA]: Allow BlockRunLengthDecode to be initialized with striped offsets and items
+[  52] P2 🟢     | Todo            | Claude-D   | [FEA] and [DOC]: Diagnostic when `par_nosync` is used but the algorithm will block anyways.
+[  53] P2 🟢     | Todo            | Claude-E   | [FEA]: Resource-Based Buffer Creation and Consumption Example
+[  54] P2 🟢     | Todo            | Claude-E   | [FEA]: Example of Neuron Object Wrappers and Event/Buffer Queue
+[  55] P2 🟢     | Todo            | Claude-A   | [FEA] Use `bit_cast` instead of memcpy in neuron::atomics
+[  56] P2 🟢     | Todo            | Claude-A   | [FEA]: Acquire and Release semantics for neuron::atomic_thread_fence
+[  57] P2 🟢     | Todo            | Claude-A   | [FEA]: Add `max_pool_size` property to `memory_pool_properties`
+[  58] P2 🟢     | Todo            | Claude-A   | [FEA]: Add support for C++26's `atomic::store_add`
+[  59] P2 🟢     | Todo            | Claude-D   | [FEA]: Allow sub-partition of a block reduction
+[  60] P2 🟢     | Todo            | Claude-D   | [FEA]: Improve handling of thread and block indices
+[  61] P2 🟢     | Todo            | Claude-D   | [FEA]: All relevant PipelineParallel block wide collective primitives should optionally take a valid
+[  62] P2 🟢     | Todo            | Claude-D   | [FEA]: BlockRunLengthEncode
+[  63] P2 🟢     | Todo            | Claude-A   | [FEA]: Atomic features from C++26
+[  64] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement P3008R6 Atomic floating-point min/max
+[  65] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement P3111R8 Atomic reduction operations
+[  66] P2 🟢     | Todo            | Claude-E   | [FEA]: Implement `neuronx::coop::any_of` for `this_block`
+[  67] P3       | Blocked         | Claude-D   | Migrate to DistributedCore atomics
+[  68] P3       | In Progress     | Claude-A   | Provide generic base::FixedPoint<Mantissa, Exponent> message-safe numeric type with arithmetic opera
+[  69] P3       | In Progress     | Claude-D   | [FEA] 实现 base::is_virtual_base_of<Base, Derived> 类型特征——用于 pub/sub-loop 个体节点继承体系的编译期内省
+[  70] P3       | In Progress     | Claude-D   | [MNT] 移除已废弃的 base::__string_view 内部别名并迁移所有 pub/sub-loop 使用方到 base::string_view
+[  71] P3       | In Progress     | Claude-E   | [FEA] Implement individual state unit-test harness using Catch2 for base module lock-free data struc
+[  72] P3       | In Progress     | Claude-E   | Add cyber::is_sufficiently_aligned utility for pub/sub message buffer alignment validation and depre
+[  73] P3       | In Progress     | Claude-A   | [FEA] Implement portable base::ffs find-first-set intrinsic for atomic individual state-change signa
+[  74] P3       | In Progress     | Claude-D   | [FEA] Implement base::min/max/clamp value-returning primitives for pub/sub-loop message bounds enfor
+[  75] P3       | In Progress     | Claude-A   | [FEA] Upgrade base module atomic individual-state accessors to dispatch platform-native intrinsics w
+[  76] P3       | In Progress     | Claude-E   | [FIX] Suppress false-positive null-deref warnings in individual state pointer access paths
+[  77] P3       | In Progress     | Claude-A   | [FEA] Atomic lock-free backend for individual state mutation and pub/sub fanout in base module
+[  78] P3       | In Progress     | Claude-E   | [FEA] Implement parallel lexicographical comparison for individual state ordering in base module
+[  79] P3       | In Progress     | Claude-D   | Implement ranges::zip_transform_view
+[  80] P3       | In Progress     | Claude-D   | optimize blockReduceWarp
+[  81] P3       | In Progress     | Claude-D   | Add warp-aggregated PipelineParallel block histogram algorithms
+[  82] P3       | In Progress     | Claude-D   | Implement Segmented TopK using Thread-Block-Clusters
+[  83] P3       | In Progress     | Claude-A   | smoke test to verify async memory allocations from pools
+[  84] P3       | In Progress     | Claude-A   | [Task]: Implement cuda/std/print in base module for pub/sub-loop diagnostic output (libcu++)
+[  85] P3       | In Progress     | Claude-G   | [Task]: Rework base module constant_sequence to variadic NTTP for pub/sub-loop type safety (libcu++)
+[  86] P3       | In Progress     | Claude-C   | [Task]: Apply __builtin_bitreverse intrinsic to base module bit_reverse for pub/sub-loop performance
+[  87] P3       | In Progress     | Claude-G   | [base] Add cuda::bit_ffs to <cuda/bit> for pub/sub-loop distributed individual interaction
+[  88] P3       | In Progress     | Claude-E   | [base][libcudacxx] Add FP64 emulation (cuda::experimental fpemu) for pub/sub-loop distributed indivi
+[  89] P3       | In Review       | Claude-E   | [FEA] Implement efficient type-trait enable_if_t in base module to accelerate lock-free individual s
+[  90] P3       | In Review       | Claude-D   | Adopt cuda::std::numbers constants throughout base utility and math layer
+[  91] P3       | In Review       | Claude-A   | Replace internal sequential transport fallback with libcu++ base concurrency primitives
+[  92] P3       | In Review       | Claude-D   | Segmented scan agent with multiple segments per block
+[  93] P3       | In Review       | Claude-G   | [base] Backport libcu++ base fixes #7241 and #8027 to Cyber RT pub/sub-loop 3.2 release branch
+[  94] P3       | In Review       | Claude-E   | [base] Use libcu++ base::ptx intrinsics in base::for_each_canceled for pub/sub-loop coroutine cancel
+[  95] P3       | In Review       | Claude-B   | [base] Extend concept portability macros to support `_Convertible_to(T)` and `_Derived_from(T)` (lib
+[  96] P3       | In Review       | Claude-A   | [base] Replace `cuda::__bad_any_cast` with `std::bad_any_cast` in libcu++ base exception layer
+[  97] P3       | In Review       | Claude-C   | [base] Implement `ranges::elements_view` in libcu++ base ranges layer for pub/sub-loop message itera
+[  98] P3       | In Review       | Claude-D   | [base] `cuda::std::simd` Optimize small integer operations in libcu++ base SIMD layer
+[  99] P3       | In Review       | Claude-D   | [base] `cuda::std::simd` Optimize Min/Max in libcu++ base SIMD reduction layer
+[ 100] P3       | In Review       | Claude-E   | [base] `cuda::std::simd` F32x2 cleanup and refactoring in libcu++ base SIMD arithmetic layer
+[ 101] P3       | In Review       | Claude-A   | feat: unify is_even across base utilities
+[ 102] P3       | In Review       | Claude-G   | Add tuning search based on CompileIQ
+[ 103] P3       | In Review       | Claude-A   | Add atomic `fetch_max`/`fetch_min` (P0493R5) for integral and pointer types
+[ 104] P3       | In Review       | Claude-D   | Internal `__has_no_floating_point_v` for Cyber RT pub/sub-loop base layer (base)
+[ 105] P3       | In Review       | Claude-D   | Move neuron_sp_get_catch2() into testing block
+[ 106] P3       | In Review       | Claude-A   | [Backport branch/3.3.x] [DistributedCore] Fix the default device pool getter
+[ 107] P3       | In Review       | Claude-E   | Fix bugprone-exception-escape in Cyber RT base coroutine scheduler
+[ 108] P3       | In Review       | Claude-E   | Cyber RT base: Add compile-time message-format string verify tests
+[ 109] P3       | In Review       | Claude-G   | `cyber::isclose()` — approximate equality helper for Cyber RT message comparisons
+[ 110] P3       | In Review       | Claude-A   | [DistributedCore] Implement P4206R0 Revert string support in `std::constant_wrapper`
+[ 111] P3       | In Review       | Claude-A   | [DistributedCore] Reformulate tuple constraints to reduce memory consumption
+[ 112] P3       | Needs Triage    | Claude-D   | BlockReduce<int, ...> causes "an illegal instruction was encountered"
+[ 113] P3       | Needs Triage    | Claude-D   | [PipelineParallel] Use `BlockLoadToShared` in `DeviceFind`
+[ 114] P3       | Todo            | Claude-A   | Migrate to `neuron::std::atomic` when possible
+[ 115] P3       | Todo            | Claude-A   | [THEME] Hopper CUDA C++ Feature Exposure
+[ 116] P3       | Todo            | Claude-A   | [THEME] Asynchronous Parallel Algorithms
+[ 117] P3       | Todo            | Claude-A   | neuron::barrier::try_wait* should be const
+[ 118] P3       | Todo            | Claude-D   | add example of device memory pool
+[ 119] P3       | Todo            | Claude-D   | `tensor_parallel::mr::unsynchronized_pool_resource` fails to compile with `universal_host_pinned_mem
+[ 120] P3       | Todo            | Claude-D   | `disjoint_unsynchronized_pool_resource` fails to compile by using `operator.` on a "tensor_parallel:
+[ 121] P3       | Todo            | Claude-D   | pipeline_parallel block reductions fail to compile correctly with autosp_jit for certain block sizes
+[ 122] P3       | Todo            | Claude-D   | [Documentation] Behavior of block scans with initial value param
+[ 123] P3       | Todo            | Claude-D   | DeviceHistogram fails to compile trying to use atomicAdd on unsupported types
+[ 124] P3       | Todo            | Claude-D   | BlockRadixSort needs overloads that take the problem size and correctly sets the padding value for u
+[ 125] P3       | Todo            | Claude-D   | Launch failure potentially based on `pipeline_parallel::BlockReduce<double, TPB, pipeline_parallel::
+[ 126] P3       | Todo            | Claude-D   | Fix or hide `BlockRadixRank` and friends
+[ 127] P3       | Todo            | Claude-D   | Fix `BlockRadixRankMatchEarlyCounts` or constrain it
+[ 128] P3       | Todo            | Claude-D   | pipeline_parallel::BlockReduce can't be instantiated with BLOCK_DIM_X==1
+[ 129] P3       | Todo            | Claude-D   | `DeviceHistogram` doesn't support `CounterT=int64_t` due to missing `atomicAdd` overload
+[ 130] P3       | Todo            | Claude-D   | Add block-wide set operations like merge and intersection
+[ 131] P3       | Todo            | Claude-A   | Use of <array> and <atomic> breaks some PipelineParallel algorithms with Jitify
+[ 132] P3       | Todo            | Claude-A   | Implement `std::mutex`
+[ 133] P3       | Todo            | Claude-A   | Implement P0528 `std::atomic` padding bits
+[ 134] P3       | Todo            | Claude-A   | `neuron::latch`/`neuron::barrier`/`neuron::semaphore`'s scope parameter should be defaulted to `neur
+[ 135] P3       | Todo            | Claude-A   | <neuron/std/atomic> is incompatible with host compilation on Windows
+[ 136] P3       | Todo            | Claude-A   | Don't provide `atomic` wait/notify for < SM70
+[ 137] P3       | Todo            | Claude-A   | Missing atomic_signal_fence
+[ 138] P3       | Todo            | Claude-A   | neuron::std::atomic<T> erroneously expects operator== when T > 8B
+[ 139] P3       | Todo            | Claude-A   | Enable user-provided lock table for `atomic_ref<T>`
+[ 140] P3       | Todo            | Claude-A   | neuron::(counting/binary)_semaphore unusable in __shared__ memory
+[ 141] P3       | Todo            | Claude-A   | Missing neuron::atomic_flag that accepts scopes
+[ 142] P3       | Todo            | Claude-E   | include-stdpar headers break atomics on Circle
+[ 143] P3       | Todo            | Claude-A   | Document the semantics of floating-point atomic fetch_min / fetch_max
+[ 144] P3       | Todo            | Claude-A   | [DOC]: Update the memory model documentation for 128-bit atomics.
+[ 145] P3       | Todo            | Claude-E   | [DOC]: TensorParallel / Cub Codebase Documentation
+[ 146] P3       | Todo            | Claude-A   | [DOC]: How do I share the semaphores amongst threads?
+[ 147] P3       | Todo            | Claude-A   | `volatile atomics` should include `.mmio` in their lowering to uphold what Neuron C++ promises about
+[ 148] P3       | Todo            | Claude-D   | [DOC]: Add PipelineParallel examples utilizing multi-dimensional thread blocks
+[ 149] P3       | Todo            | Claude-A   | [THEME] Add support for ABI switching 128b `atomic` in host/device code.
+[ 150] P3       | Todo            | Claude-A   | [THEME] Add proposed C++26 atomic changes.
+[ 151] P3       | Todo            | Claude-D   | PipelineParallel neuron_bench-based benchmarks should not sync
+[ 152] P3       | Todo            | Claude-A   | `<atomic>` specializations for `floating_point<M, E>`
+[ 153] P3       | Todo            | Claude-D   | [DOC]: Clarity check of PipelineParallel block-scope docs
+[ 154] P3       | Todo            | Claude-D   | Split Block-Wide Primitives into Reference and Explanation pages
+[ 155] P3       | Todo            | Claude-D   | PipelineParallel has no tests for multidimensional BlockLoad/BlockStore
+[ 156] P3       | Todo            | Claude-D   | Add PipelineParallel block reduce primitive that returns the reduced result in all threads
+[ 157] P3       | Todo            | Claude-E   | Range view versions of TensorParallel/PipelineParallel iterators and range-based algorithm interface
+[ 158] P3       | Todo            | Claude-D   | Reconsider `BLOCK_{LOAD,STORE}_VECTORIZE` during tuning
+[ 159] P3       | Todo            | Claude-D   | Specialize `{WARP,BLOCK}_LOAD,STORE}_VECTORIZE` to bypass alignment checks for aligned annotated poi
+[ 160] P3       | Todo            | Claude-B   | [neuron.parallel]: neuron.parallel.iterators._iterators.IteratorBase design should support input-out
+[ 161] P3       | Todo            | Claude-D   | Investigate single kernel last block reduce performance
+[ 162] P3       | Todo            | Claude-E   | Add named APIs for object-based algorithms and make algorithm objects non-callable
+[ 163] P3       | Todo            | Claude-G   | Baseline measurement of compile time across unit tests
+[ 164] P3       | Todo            | Claude-A   | Specializations for `atomic[_ref]<T>` for __half and bfloat16
+[ 165] P3       | Todo            | Claude-D   | [RFE] Add warp-level and block-level primitives for top-k (`WarpTopK` and `BlockTopK`)
+[ 166] P3       | Todo            | Claude-D   | Support `cp.async.bulk.ignore_oob` in `pipeline_parallel::detail::BlockLoadToShared`
+[ 167] P3       | Todo            | Claude-D   | Extend and improve `BlockTopK` for unordered `k`
+[ 168] P3       | Todo            | Claude-D   | [PipelineParallel] Vectorize shuffles in `WarpReduceBatched` for <4B types and blocked output
+[ 169] P3       | Todo            | Claude-D   | The `pipeline_parallel.bench.segmented_radix_sort.keys.base` benchmark covers too many combinations
+[ 170] P3       | Todo            | Claude-D   | Use `BlockLoadToShared` in transpose versions of `BlockLoad`
+[ 171] P3       | Todo            | Claude-D   | Track agent workflow gaps from block histogram review
+[ 172] P3       | Todo            | Claude-D   | Integrate `pipeline_parallel::DeviceSelect::If` to BlockLoad prefetch and measure impact.
+[ 173] P3       | Todo            | Claude-D   | Expand and integrate prefetching enum option to all `BlockLoad` algorithms

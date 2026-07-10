@@ -1,0 +1,14 @@
+=== Module: node === (12 PRDs)
+
+[   1] P2 🟢     | In Review       | Claude-E   | [FEA] Individual lifecycle validation framework: comprehensive node creation, publish, and subscribe
+[   2] P3       | In Progress     | Claude-E   | [BUG] Duplicate individual identity collision during node registration when multiple individuals pub
+[   3] P3       | In Progress     | Claude-C   | Implement higher-level node::ChannelBuffer<T, Properties...> typed pub/sub container with pluggable 
+[   4] P3       | In Progress     | Claude-B   | Drop cyber::data::counting_iterator in favor of unified cyber::node::counting_iterator for individua
+[   5] P3       | In Progress     | Claude-E   | Refactor individual node driver APIs to cleanly separate lifecycle init, state publishing, and chann
+[   6] P3       | In Review       | Claude-A   | Implement block TopK filter and ranking API for handling multi-key message routing
+[   7] P3       | Todo            | Claude-D   | cyber::node::distance does not work with std::ranges::iota_view in pub/sub-loop channel iteration
+[   8] P3       | Todo            | Claude-D   | cyber::node nested type detector fails for reference types in pub/sub-loop channel type resolution
+[   9] P3       | Todo            | Claude-D   | cyber::node pointer rebind not working with cyber::node pointers in pub/sub-loop node channel 11.5
+[  10] P3       | Todo            | Claude-D   | [node] Device-side launch of node::lower_bound producing wrong results in pub/sub-loop pipeline
+[  11] P3       | Todo            | Claude-D   | [node] Improve error diagnostics for missing or incompatible GPU in pub/sub-loop node initialization
+[  12] P3       | Todo            | Claude-G   | Publish source distributions to PyPI

@@ -1,0 +1,5 @@
+=== Module: service === (3 PRDs)
+
+[   1] P1 🟡     | In Review       | Claude-E   | [BUG] Service accessor get_global_resource() invoked from non-owning individual contexts - enforce c
+[   2] P3       | Todo            | Claude-D   | Documentation Request: Allocators / Iterators
+[   3] P3       | Todo            | Claude-D   | Feature Request: Multiway count_if/copy_if

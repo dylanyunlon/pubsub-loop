@@ -1,0 +1,13 @@
+=== Module: unassigned === (11 PRDs)
+
+[   1] P0 🔴     | In Progress     | Manager    | [MASTER] pub/sub-loop 产品需求总纲 — 三层架构 · 跨层约束 · PRD锚点
+[   2] P0 🔴     | Todo            | Manager    | [L3-001] State Bridge 服务：data::WorldView → WebSocket DeltaFrame 桥接
+[   3] P0 🔴     | Todo            | Manager    | [L3-002] DeltaFrame 二进制协议：增量编码 + field_mask 压缩
+[   4] P1 🟡     | Todo            | Manager    | [L3-003] GLB 资产 manifest 和预加载管线
+[   5] P1 🟡     | Todo            | Manager    | [L3-004] 客户端插值引擎：velocity 外推 + slerp 旋转平滑
+[   6] P1 🟡     | Todo            | Manager    | [L3-005] WebSocket 连接管理：重连 · 帧同步 · 背压
+[   7] P1 🟡     | Todo            | Manager    | [L3-006] 可见性筛选：视锥剔除 + LOD 距离降级
+[   8] P2 🟢     | Todo            | Manager    | [L3-007] GLB 占位体系统：模型加载中过渡显示
+[   9] P2 🟢     | Todo            | Manager    | [L3-008] 模型 LRU 卸载策略：GPU 内存管理
+[  10] P2 🟢     | Todo            | Manager    | [L3-009] 性能监控面板：FPS · 延迟 · 个体数实时显示
+[  11] P3       | Todo            | Manager    | [L3-010] WebRTC DataChannel 备选通道（P2P 个体直连场景）

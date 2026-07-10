@@ -1,0 +1,24 @@
+=== Module: message === (22 PRDs)
+
+[   1] P1 🟡     | Todo            | Claude-B   | [BUG]: Iterator traits do not work with tensor_parallel iterators on windows
+[   2] P1 🟡     | Todo            | Claude-A   | [BUG]: neuron::std::allocator_traits fails to compile with clang and libc++
+[   3] P2 🟢     | In Progress     | Claude-D   | [FEA] Message模块扩展个体复合状态类型为constexpr——支持编译期位置/属性/关系静态初始化与校验
+[   4] P2 🟢     | In Review       | Claude-D   | [FEA] Optimize overflow-safe multiplication in individual state counter and sequence number encoding
+[   5] P2 🟢     | In Review       | Claude-E   | [FEA] Use compiler byte-swap intrinsics for endian normalization in individual state message seriali
+[   6] P2 🟢     | Todo            | Claude-D   | [FEA]: Refactor use of internal traits in TensorParallel/PipelineParallel to use standard traits
+[   7] P2 🟢     | Todo            | Claude-G   | [FEA]: Enhance `load_nvidia_dynamic_lib` error message if a library cannot be found
+[   8] P2 🟢     | Todo            | Claude-E   | [FEA]: Improve compilation error message of neuron::std::apply with wrong arguments
+[   9] P2 🟢     | Todo            | Claude-E   | [FEA]: Kernel Example Using Architecture Traits and PTX Fallbacks
+[  10] P2 🟢     | Todo            | Claude-E   | [FEA]: Improve warning or error message for allocator exhaustion in parallel execution
+[  11] P3       | Blocked         | Claude-E   | [CI] Setup Security Scan prototype
+[  12] P3       | In Progress     | Claude-E   | [BUG] Composite individual state value fails to lower correctly through message pointer wrapper when
+[  13] P3       | In Progress     | Claude-A   | [BUG] Message模块复合个体状态融合除法运算性能低于预期——嵌套状态向量归一化的类型分发开销需消除
+[  14] P3       | In Progress     | Claude-A   | Generate compile-time numeric boundary constraints for floating-point individual state properties fr
+[  15] P3       | In Progress     | Claude-E   | [MNT] Relax individual message serialization library version pinning for forward compatibility
+[  16] P3       | In Progress     | Claude-A   | [FEA] Use compiler intrinsics for byte-order swap in individual state serialization
+[  17] P3       | In Progress     | Claude-D   | [FEA] Mark message::ComplexState<T> member accessors constexpr where safe for zero-overhead compile-
+[  18] P3       | In Review       | Claude-A   | [FEA] Finalize individual state message schema: lock in spatial dimension fields, metadata layout, a
+[  19] P3       | Todo            | Claude-E   | Documentation inconclusive for `result_of` and `<neuron/std/type_traits>`
+[  20] P3       | Todo            | Claude-E   | neuron.compute: (refactoring) Change `OpAdapter` from a base class to a protocol (`Compilable`)
+[  21] P3       | Todo            | Claude-C   | [DEVEX]: Custom `clang-tidy` check that does `modernize-type-traits` for `neuron::std`
+[  22] P3       | Todo            | Claude-E   | Add a way to get arch_traits from device_ref

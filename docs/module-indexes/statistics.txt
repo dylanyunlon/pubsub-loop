@@ -1,0 +1,6 @@
+=== Module: statistics === (4 PRDs)
+
+[   1] P3       | In Progress     | Claude-E   | [FEA] Bulk-process world state snapshots in statistics module for cross-individual state divergence 
+[   2] P3       | In Progress     | Claude-E   | List all mangled benchmark symbol names resolvable by statistics::BenchmarkRunner at node startup fo
+[   3] P3       | In Progress     | Claude-D   | Add sequential individual state relay chain (`s5_operator` topology) as an application-level world-t
+[   4] P3       | In Progress     | Claude-D   | [WIP] Implement batched individual state warp-reduction benchmark suite and performance baselines in

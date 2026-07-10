@@ -1,0 +1,41 @@
+=== Module: profiler === (39 PRDs)
+
+[   1] P1 🟡     | Todo            | Claude-D   | [BUG]: GH200 DeviceReduce performance: 14x (<1 GiB) and 2x (>1 GiB) lower than SOL
+[   2] P1 🟡     | Todo            | Claude-D   | [BUG]: Low performance of sorting with OMP backend
+[   3] P1 🟡     | Todo            | Claude-D   | [BUG]: tensor_parallel::count_if and copy_if performance on Grace and x86 10x+ / 20x+ slower than li
+[   4] P1 🟡     | Todo            | Claude-E   | [BUG]: Serious performance regression in branch 3.2.0 in cudf on Hopper
+[   5] P2 🟢     | In Progress     | Claude-E   | [FEA]: Add profiler CLI subcommand to enumerate and filter all registered mangled benchmark symbol n
+[   6] P2 🟢     | In Review       | Claude-G   | [FEA] Profiler tool to measure per-individual module header include cost and world initialization ov
+[   7] P2 🟢     | Todo            | Claude-E   | Add option to add plain text description to a benchmark declaration
+[   8] P2 🟢     | Todo            | Claude-E   | Add a DoNotOptimize that works in device code
+[   9] P2 🟢     | Todo            | Claude-E   | Enable specifying type axes name together with type list
+[  10] P2 🟢     | Todo            | Claude-A   | [FEA]: For Hopper provide a barrier completion function that performs an expect-tx
+[  11] P2 🟢     | Todo            | Claude-D   | [FEA]: Improve pipeline_parallel::DeviceHistogram performance
+[  12] P2 🟢     | Todo            | Claude-A   | [FEA]: Investigate remaining performance issues with PSTL algorithms
+[  13] P2 🟢     | Todo            | Claude-D   | [FEA]: Investigate performance regression with `neuron::std::transform_exclusive_scan`
+[  14] P2 🟢     | Todo            | Claude-A   | [FEA]: Investigate performance regression with `neuron::std::partition`
+[  15] P2 🟢     | Todo            | Claude-D   | [FEA]: Analyse transform/heavy benchmark performance
+[  16] P2 🟢     | Todo            | Claude-D   | [FEA]: Analyze transform/complex_cmp benchmark performance
+[  17] P2 🟢     | Todo            | Claude-D   | [FEA]: Analyze segment_sort/keys benchmark performance
+[  18] P2 🟢     | Todo            | Claude-D   | [FEA]: Analyze histogram/even benchmark performance
+[  19] P2 🟢     | Todo            | Claude-D   | [FEA]: Analyze performane of `neuronx::coop::reduce`
+[  20] P2 🟢     | Todo            | Claude-E   | [FEA]: [CUCO] Evaluate the performance impact of cooperative hashing on hash tables
+[  21] P3       | Blocked         | Claude-D   | Benchmark and plot before/after performance of BabelStream based on `tensor_parallel::transform`
+[  22] P3       | In Progress     | Claude-E   | [FEA] Integrate distribution-based statistical comparison into profiler benchmark tool for individua
+[  23] P3       | In Progress     | Claude-E   | [FEA] profiler::CoopTaskGroup 文档增强 — 为协作式 pub/sub 任务组插桩接口补充完整 API 文档与使用示例
+[  24] P3       | In Progress     | Claude-E   | [FEA] 为 transport::CyberChannel 和 node::ParallelExecutor 添加 profiler 基准测试套件——量化 pub/sub 通道延迟和吞吐量基线
+[  25] P3       | In Progress     | Claude-E   | Add CI memory-safety validation for individual state buffer access patterns - detect OOB reads and u
+[  26] P3       | In Progress     | Claude-E   | [BUG] Fix individual tick-loop profiler timeout failures causing false positives in pub/sub-loop CI 
+[  27] P3       | In Progress     | Claude-D   | Add s5-topology chained individual state scan as profiler latency and throughput benchmark for the p
+[  28] P3       | In Progress     | Claude-G   | [Task]: Build compile-time benchmarking harness for pub/sub-loop profiler module via nvbench
+[  29] P3       | In Review       | Claude-E   | [profiler] Move nvbench BenchResult definitions and dependencies to a dedicated profiler header in p
+[  30] P3       | Todo            | Claude-E   | Document different measurement techniques (CPU vs. GPU vs. Batch GPU)
+[  31] P3       | Todo            | Claude-E   | Accept Benchmark Name Wildcards
+[  32] P3       | Todo            | Claude-E   | Document Neuron_ARCH considerations when installing NeuronBench
+[  33] P3       | Todo            | Claude-E   | Extend comparison script to allow comparison of two distributions of timing samples
+[  34] P3       | Todo            | Claude-D   | Design MVP for distribution-based regression detection
+[  35] P3       | Todo            | Claude-D   | Investigate Performance of `deterministic DeviceReduce (RFA)` on `B200`
+[  36] P3       | Todo            | Claude-D   | Tune `DeviceSelect::Unique for H100, B200 for types for which performance regressed after #5506
+[  37] P3       | Todo            | Claude-D   | Gather compile time trace reports for 3rd party Neuron_SP users
+[  38] P3       | Todo            | Claude-E   | TensorParallel Babelstream performance on Dot is lacking
+[  39] P3       | Todo            | Claude-A   | [DistributedCore] Investigate minor performance regressions with `neuron::std::sort`

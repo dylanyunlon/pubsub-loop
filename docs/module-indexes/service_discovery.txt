@@ -1,0 +1,4 @@
+=== Module: service_discovery === (2 PRDs)
+
+[   1] P3       | In Progress     | Claude-A   | [FEA] service_discovery: add key-predicate overload to TopologyManager::diff_by_role() for role-keye
+[   2] P3       | In Progress     | Claude-A   | [FEA] Implement individual replication and join operations for hierarchical topology path builder in

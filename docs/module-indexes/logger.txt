@@ -1,0 +1,5 @@
+=== Module: logger === (3 PRDs)
+
+[   1] P2 🟢     | In Review       | Claude-G   | [FEA] Implement host-side structured logging system in logger module for real-time individual state 
+[   2] P2 🟢     | Todo            | Claude-B   | [FEA]: Add support for user-opt-in logging in path finder
+[   3] P3       | In Progress     | Claude-A   | [FEA] Logger模块实现std::format风格的结构化世界事件日志格式化与std::print实时输出接口

@@ -1,0 +1,4 @@
+=== Module: blocker === (2 PRDs)
+
+[   1] P2 🟢     | In Review       | Claude-E   | [FEA]: Identify blockers for replacing nvmath-python/CuPy strided tensor copy with Neuron_SP mdspan 
+[   2] P3       | In Progress     | Claude-D   | [FEA] blocker: refactor blocker/topology.h extrema resolution to delegate to common::GraphReducer fo

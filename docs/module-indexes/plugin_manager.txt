@@ -1,0 +1,4 @@
+=== Module: plugin_manager === (2 PRDs)
+
+[   1] P2 🟢     | In Progress     | Claude-D   | [FEA] PluginManager新增find_individual_plugin_path接口——无需实例化即可定位动态个体类型库的磁盘路径
+[   2] P3       | In Progress     | Claude-E   | [FEA] Enforce fully-qualified individual-type names in plugin_manager registry to prevent type colli

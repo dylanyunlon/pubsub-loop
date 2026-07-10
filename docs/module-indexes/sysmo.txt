@@ -1,0 +1,6 @@
+=== Module: sysmo === (4 PRDs)
+
+[   1] P2 🟢     | Todo            | Claude-E   | [FEA] Use NVML for additional diagnostics
+[   2] P2 🟢     | Todo            | Claude-E   | Detect if GPU is being used for graphical purposes
+[   3] P2 🟢     | Todo            | Claude-D   | [FEA]: Investigate in-place sorting algorithms to reduce memory usage
+[   4] P3       | In Progress     | Claude-E   | Add CI test coverage for pub/sub-loop world model on arm64 embedded targets (RK3568/RT-Thread) to va

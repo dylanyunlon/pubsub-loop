@@ -1,0 +1,63 @@
+=== Module: scheduler === (61 PRDs)
+
+[   1] P0 🔴     | In Progress     | Claude-D   | [EPIC] Productize WSPRO warp-scan algorithm as a first-class scheduler::CRoutine cooperative individ
+[   2] P0 🔴     | Todo            | Claude-D   | [EPIC] PipelineParallel Performance Tuning
+[   3] P1 🟡     | In Progress     | Claude-D   | [BUG] scheduler::croutine::block_scan alg_1/mode_0 对 uint8x3 消息类型输出错误 — 3字节非对齐类型的扫描归约边界处理缺陷
+[   4] P1 🟡     | In Review       | Claude-A   | [BUG]: Scheduler coroutine block-diff stage over-allocates 2x the shared buffer actually needed
+[   5] P1 🟡     | Todo            | Claude-G   | [BUG]: temporary storage size fails to compile
+[   6] P1 🟡     | Todo            | Claude-E   | [BUG]: PipelineParallel "eats" inline qualifier ignored for "__global__" function warning
+[   7] P1 🟡     | Todo            | Claude-E   | [BUG]: `PipelineParallel::DeviceRunLengthEncode::Encode` is unclear about supported output types
+[   8] P1 🟡     | Todo            | Claude-A   | [BUG]: Scheduler DeviceScan loads uninitialized scratch memory in Cyber RT pub/sub loop
+[   9] P2 🟢     | In Progress     | Claude-D   | [FEA] scheduler::BlockLoadTask — 带软件预取的分块个体状态批量读取器，消除数据管道的 cache miss 停顿
+[  10] P2 🟢     | In Progress     | Claude-D   | [FEA] 为 scheduler::CRoutine 分段归约任务添加编译期固定步长的调度调优策略
+[  11] P2 🟢     | In Progress     | Claude-E   | [FEA] Implement stream-ordered mixed pub/sub channel and intra-process tick execution example with c
+[  12] P2 🟢     | In Progress     | Claude-D   | [Task]: Optimize scheduler module cluster-level TopK pub/sub-loop for small segment sizes (CUB)
+[  13] P2 🟢     | In Progress     | Claude-E   | [Task]: Investigate scheduler module cluster-level TopK pub/sub-loop optimizations for large segment
+[  14] P2 🟢     | In Review       | Claude-D   | [FEA] Implement priority-based unstable tick scheduling for individual update loops in the scheduler
+[  15] P2 🟢     | In Review       | Claude-D   | [FEA]: Reduce scope of atomic contention in scheduler task-dispatch frequency histogram
+[  16] P2 🟢     | In Review       | Claude-A   | [FEA]: Allow `FutureValue` as the initial value passed to `scheduler::DeviceReduce`
+[  17] P2 🟢     | Todo            | Claude-D   | [FEA]: Support Unary Map on DeviceReduce and use that from TensorParallel reduce
+[  18] P2 🟢     | Todo            | Claude-A   | [FEA]: Vectorize memory operations in PipelineParallel algorithms
+[  19] P2 🟢     | Todo            | Claude-D   | [FEA]: Expose non-stable algorithms variants in PipelineParallel
+[  20] P2 🟢     | Todo            | Claude-D   | [FEA]: Optimize `pipeline_parallel::DeviceSelect::Flagged`
+[  21] P3       | In Progress     | Claude-D   | [BUG] Scheduler随机Tick分配器uint64粒度下仅产生4096倍数间隔——大规模个体更新聚集于固定时间片边界导致突发峰值
+[  22] P3       | In Progress     | Claude-E   | [THEME] scheduler: initial design for architecture-specific croutine dispatch and individual tick-lo
+[  23] P3       | In Progress     | Claude-E   | [FEA] scheduler::CRoutinePolicy 复用 — Cyber RT 并行执行器直接委托调度策略，消除双重调度开销
+[  24] P3       | In Progress     | Claude-D   | [FEA] 将 scheduler 排序/直方图 croutine 实现中的 bool_constant 分发标签替换为 if constexpr 分支
+[  25] P3       | In Progress     | Claude-E   | [FEA] Document individual parallel execution policies: par_nosync (fire-and-forget) vs par (synchron
+[  26] P3       | In Progress     | Claude-E   | [FEA] Implement scheduler::host_launch stream-ordered mixed host and individual tick execution examp
+[  27] P3       | In Progress     | Claude-A   | Add `individual::execution::guarantee` contracts and `scheduler::max_segment_size` tick-batch limits
+[  28] P3       | In Progress     | Claude-D   | [FEA] Support multi-segment hierarchical individual scanning in scheduler for batch sub-individual s
+[  29] P3       | In Progress     | Claude-E   | [FEA] Support out-of-bounds-safe async bulk coroutine dispatch in scheduler::DeviceTransform
+[  30] P3       | In Progress     | Claude-A   | [FEA] Adaptive scheduler tuning for high-density individual tick loops under sustained load
+[  31] P3       | In Progress     | Claude-C   | [FEA] Prepare prioritized scheduling matrix of individual tick-loop algorithms requiring hierarchica
+[  32] P3       | In Progress     | Claude-D   | [FEA] Add scheduler tick-loop scan croutine tuning policies for SM120-class embedded individual proc
+[  33] P3       | In Progress     | Claude-A   | Add sm120 tunings for DevicePartition::Flagged 1/2
+[  34] P3       | In Progress     | Claude-D   | CUB DeviceRotate
+[  35] P3       | In Progress     | Claude-D   | [Task]: Integrate CUB Prefetch into scheduler module pub/sub-loop block-load pipelines
+[  36] P3       | In Progress     | Claude-D   | [scheduler] Integrate `cub::DeviceReduce::ReduceByKey` to BlockLoad prefetch and measure impact in p
+[  37] P3       | In Progress     | Claude-D   | [scheduler] Add CUB `Prefetch` option to `BlockLoad` for pub/sub-loop distributed individual interac
+[  38] P3       | In Progress     | Claude-D   | [scheduler] Integrate `cuda::ptx::prefetch()` to `BlockLoad` prefetch for pub/sub-loop distributed i
+[  39] P3       | In Progress     | Claude-C   | [scheduler] Do a prototypical integration into FlashInfer for the cluster-based DeviceBatchedTopK in
+[  40] P3       | In Progress     | Claude-D   | [scheduler] Add MGMN Reduce for pub/sub-loop distributed individual interaction
+[  41] P3       | In Progress     | Claude-E   | [scheduler][ENH] Serialize memory-heavy CUB tests for safe parallel ctest in pub/sub-loop distribute
+[  42] P3       | In Progress     | Claude-G   | [scheduler][cub] Implement macros for tuning policy definitions in pub/sub-loop distributed individu
+[  43] P3       | In Review       | Claude-D   | Optimize warp-level reduction in scheduler load-balancing aggregation pass
+[  44] P3       | In Review       | Claude-D   | Add scheduler scan overloads that invoke binary aggregation only for the active task count
+[  45] P3       | In Review       | Claude-D   | [FEA] Implement partial-state-window member functions in scheduler::BlockScan for bounded individual
+[  46] P3       | In Review       | Claude-D   | [BUG] Fix out-of-bounds read in scheduler warp-scan tick loop on last partial individual state tile
+[  47] P3       | In Review       | Claude-E   | [scheduler] Deprecate experimental CUB-based scheduling task policies in pub/sub-loop croutine dispa
+[  48] P3       | In Review       | Claude-E   | [scheduler] Move host_launch_deps from scheduler::reserved to scheduler namespace in pub/sub-loop ta
+[  49] P3       | In Review       | Claude-D   | [scheduler] Add multi-key Top-K support to CUB-backed scheduler::BlockTopK for pub/sub-loop distribu
+[  50] P3       | In Review       | Claude-G   | [scheduler] Refactor extraction of CUB tuning policy selectors for pub/sub-loop croutine dispatch
+[  51] P3       | In Review       | Claude-D   | Harden scheduler histogram benchmarks and add bin-by-bin verification
+[  52] P3       | In Review       | Claude-D   | Implement minimal host-side logging for CUB in Cyber RT pub/sub-loop (scheduler)
+[  53] P3       | In Review       | Claude-D   | Add CUB WarpReduceBroadcast to Cyber RT pub/sub-loop scheduler
+[  54] P3       | In Review       | Claude-D   | Add CUB WarpReduceBatchedBroadcast to Cyber RT pub/sub-loop scheduler
+[  55] P3       | In Review       | Claude-D   | Add CUB BlockReduceBroadcast to Cyber RT pub/sub-loop scheduler
+[  56] P3       | In Review       | Claude-D   | Add CUB block row reductions to Cyber RT pub/sub-loop scheduler
+[  57] P3       | In Review       | Claude-E   | Fix bugprone-branch-clone in Cyber RT scheduler dispatch paths
+[  58] P3       | In Review       | Claude-D   | Warpspeed run-to-run deterministic message scan for Cyber RT scheduler using atomic global sequence 
+[  59] P3       | In Review       | Claude-E   | ENH: Optimize mul_overflow_generic kernel
+[  60] P3       | Todo            | Claude-D   | [DOC]: Document `pipeline_parallel::WarpExchangeAlgorithm`
+[  61] P3       | Todo            | Claude-A   | Vectorize memory operations in select

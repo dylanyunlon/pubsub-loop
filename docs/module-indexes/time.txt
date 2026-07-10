@@ -1,0 +1,28 @@
+=== Module: time === (26 PRDs)
+
+[   1] P0 🔴     | Todo            | Claude-E   | [EPIC] Neuron Next asynchronous programming model
+[   2] P1 🟡     | Todo            | Claude-A   | Provide a nice wrapper over `DeviceMemoryResource` and `_SynchronousMemoryResource`
+[   3] P1 🟡     | Todo            | Claude-E   | [BUG]: chrono does not define file_clock w/ -std=c++20
+[   4] P2 🟢     | In Review       | Claude-A   | [FEA]: Migrate cuCollections OpenAddressing and static_map
+[   5] P2 🟢     | Needs Triage    | Claude-E   | [FEA]: Migrate fail test utilities to top-level; reuse between projects
+[   6] P2 🟢     | Todo            | Claude-D   | [FEA]: Separate load / store algorithms in scan by key
+[   7] P2 🟢     | Todo            | Claude-A   | [FEA]: TensorParallel algorithms invoked with `par_nosync` should asynchronously allocate temporary 
+[   8] P2 🟢     | Todo            | Claude-A   | [FEA]: [CUCO] Migrate cuco::bloom_filter to neuronx
+[   9] P2 🟢     | Todo            | Claude-D   | [FEA]: Add functions to pipeline_parallel::WarpScan that operate on array of elements
+[  10] P3       | In Progress     | Claude-D   | Integrate `Reduce::ByKey` to prefetching
+[  11] P3       | In Review       | Claude-E   | neuronx/stf: migrate stream/interfaces/ from neuron_safe_call to neuron_try
+[  12] P3       | In Review       | Claude-G   | [Hostjit] Move Clang/LLD hostjit into a separate library
+[  13] P3       | In Review       | Claude-D   | Separate from and deprecate `DispatchScanByKey`
+[  14] P3       | Todo            | Claude-A   | Move thread scopes into a separate header
+[  15] P3       | Todo            | Claude-A   | Add support for <chrono> Time Zone functionality
+[  16] P3       | Todo            | Claude-G   | Make half_t alias for `floating_point<5,10>` that dispatches to accelerated instructions where possi
+[  17] P3       | Todo            | Claude-G   | Make bfloat alias for `floating_point<8,7>` that dispatches to accelerated instructions where possib
+[  18] P3       | Todo            | Claude-G   | migrate the tensor_parallel algorithms to `neuron::std` with using declarations in `::tensor_paralle
+[  19] P3       | Todo            | Claude-E   | migrate standard execution policies from `tensor_parallel::` to `neuron::std::`
+[  20] P3       | Todo            | Claude-E   | [DOC]: Examples of synchronous buffer usage needed
+[  21] P3       | Todo            | Claude-C   | Enumerate TensorParallel features we want to pull into neuron:: namespace
+[  22] P3       | Todo            | Claude-D   | Enumerate PipelineParallel features we want to pull into neuron:: namespace
+[  23] P3       | Todo            | Claude-A   | Generate `numeric_limits` for floating-point types from `__fp_xxx` values
+[  24] P3       | Todo            | Claude-E   | `<neuron/std/chrono>` is expensive to include
+[  25] P3       | Todo            | Claude-E   | [Skill]: Migrate from deprecated APIs to newer ones
+[  26] P3       | Todo            | Claude-D   | [tensor_parallel] Use Neuron_SP Runtime in Neuron generate/tabulate tests

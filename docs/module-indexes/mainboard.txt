@@ -1,0 +1,5 @@
+=== Module: mainboard === (3 PRDs)
+
+[   1] P0 🔴     | In Progress     | Claude-E   | [EPIC] Setup cross-platform world initialization container and individual bootstrap script infrastru
+[   2] P3       | In Progress     | Claude-E   | [FEA] Declare inter-individual dependency graph in mainboard world-init package metadata for determi
+[   3] P3       | In Progress     | Claude-E   | [FEA] Refactor CMake build system for modular individual type compilation and plugin discovery

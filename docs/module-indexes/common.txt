@@ -1,0 +1,496 @@
+=== Module: common === (494 PRDs)
+
+[   1] P0 🔴     | Done            | Claude-E   | [EPIC] Investigate refactoring CuPy to use neuron.parallel
+[   2] P0 🔴     | In Progress     | Claude-A   | [EPIC] Port all std-equivalent parallel algorithms from tensor_parallel:: to world::std:: namespace 
+[   3] P0 🔴     | Needs Triage    | Claude-A   | [EPIC]: TMA Exposure
+[   4] P0 🔴     | Needs Triage    | Claude-A   | [EPIC] Heterogeneous, sequential ranges support
+[   5] P0 🔴     | Todo            | Claude-E   | [EPIC] TensorParallel large input support
+[   6] P0 🔴     | Todo            | Claude-D   | [EPIC] Update TensorParallel/PipelineParallel to universally use nv/target instead of Neuron_ARCH
+[   7] P0 🔴     | Todo            | Claude-D   | [EPIC]: Add Hopper features to `neuron::ptx`
+[   8] P0 🔴     | Todo            | Claude-G   | [EPIC] Adopt Neuron_SP Runtime features in Neuron_SP
+[   9] P0 🔴     | Todo            | Claude-E   | [EPIC] make the TensorParallel parallel algorithms available in `neuron::std`
+[  10] P0 🔴     | Todo            | Claude-D   | [EPIC] Use work stealing in all relevant PipelineParallel algorithms
+[  11] P0 🔴     | Todo            | Claude-G   | [EPIC] Design user-defined tuning API for neuron.parallel algorithms
+[  12] P0 🔴     | Todo            | Claude-D   | [EPIC] Utilize nondeterministic reduce further where possible
+[  13] P0 🔴     | Todo            | Claude-E   | [EPIC] Device-scope Cooperative Algorithms
+[  14] P0 🔴     | Todo            | Claude-C   | [EPIC] Deterministic Algorithms
+[  15] P0 🔴     | Todo            | Claude-C   | [EPIC] C++ Frontend for neuron_sp.c
+[  16] P0 🔴     | Todo            | Claude-D   | [EPIC] Make the new PipelineParallel tuning API public
+[  17] P0 🔴     | Todo            | Claude-D   | [EPIC] Tune PipelineParallel Device primitives for SM120
+[  18] P0 🔴     | Todo            | Claude-D   | [EPIC]: Optimize Segmented Scan
+[  19] P0 🔴     | Todo            | Claude-D   | [EPIC]: Support device-resident problem sizes in PipelineParallel device-level algorithms
+[  20] P0 🔴     | Todo            | Claude-E   | [EPIC]: add skills to enable agents to use Neuron_SP more effectively
+[  21] P1 🟡     | Blocked         | Claude-D   | [BUG]: tensor_parallel::min_element / max_element fail with numItems close to int_max
+[  22] P1 🟡     | Blocked         | Claude-E   | [BUG] `std::string` + `tensor_parallel::tuple` on host fails to compile
+[  23] P1 🟡     | In Progress     | Claude-D   | [DO NOT MERGE] Proposal: <world/compiler> compile-time introspection and <world/linker> dynamic modu
+[  24] P1 🟡     | In Progress     | Claude-D   | [BUG] Memory Sanitizer Errors in `collection::MergeSort` Individual State Sorter
+[  25] P1 🟡     | In Review       | Claude-D   | [BUG]: `world::std::__tuple` or empty classes with `[[no_unique_address]]` attribute segfaults on Ne
+[  26] P1 🟡     | In Review       | Claude-E   | [BUG] C++17 下 constant_sequence 无法接受数组类型参数
+[  27] P1 🟡     | In Review       | Claude-E   | [BUG] 非结构类型无法传入 constant：个体状态编译期常量限制
+[  28] P1 🟡     | Todo            | Claude-A   | [BUG]: `<neuron/std/barrier>` shouldn't include `<neuron/barrier>`
+[  29] P1 🟡     | Todo            | Claude-A   | [BUG]: Consolidate conflicting licenses
+[  30] P1 🟡     | Todo            | Claude-E   | [BUG]: Ensure neuronMemcpy is called by tensor_parallel::copy
+[  31] P1 🟡     | Todo            | Claude-A   | [BUG]: extra unnecessary neuronStreamSynchronize
+[  32] P1 🟡     | Todo            | Claude-D   | [BUG]: single pass reduce
+[  33] P1 🟡     | Todo            | Claude-B   | [BUG]: RLE doesn't support discard iterator
+[  34] P1 🟡     | Todo            | Claude-A   | Rely more on the driver for input checks to reduce latency
+[  35] P1 🟡     | Todo            | Claude-D   | [BUG] inclusive_scan_by_key OOM on >= INT_MAX elements
+[  36] P1 🟡     | Todo            | Claude-B   | [BUG] Inner lists in neuron.bindings API reference are dropped
+[  37] P1 🟡     | Todo            | Claude-E   | [BUG]: 个体状态并行同步中 world_parallel::sort 的 WSP 内存越界访问
+[  38] P1 🟡     | Todo            | Claude-B   | [BUG]: world_parallel::zip_iterator 在个体状态范围不等长时允许越界访问
+[  39] P1 🟡     | Todo            | Claude-A   | [BUG]: world_parallel::host_vector 使用 universal_host_pinned_memory 分配器时的生命周期与对齐问题
+[  40] P1 🟡     | Todo            | Claude-A   | [BUG] 128bit integers are not supported on device code
+[  41] P1 🟡     | Todo            | Claude-E   | [BUG]: TensorParallel can't be used in host code
+[  42] P1 🟡     | Todo            | Claude-G   | [BUG]: tuple member *get* 无法编译 — 世界模型个体系统 pub/sub-loop
+[  43] P1 🟡     | Todo            | Claude-B   | [BUG]: `reduce_by_key` 在 zip_iterator 指向 const 指针时失败 — 个体聚合流水线
+[  44] P1 🟡     | Todo            | Claude-D   | [BUG]: 调查个体状态并行同步（tensor_parallel）废弃编译告警 — pub/sub-loop worker 污染
+[  45] P1 🟡     | Todo            | Claude-D   | [BUG]: 个体状态并行同步 OpenMP unique_by_key 在大规模输入时失败 — 世界状态处理器竞争条件
+[  46] P1 🟡     | Todo            | Claude-E   | [BUG]: Dead symlinks in repository
+[  47] P1 🟡     | Todo            | Claude-E   | [BUG]: DeviceSegmentedSort fails with worldErrorIllegalAddress when device memory is used
+[  48] P1 🟡     | Todo            | Claude-D   | [BUG]: Invalid __global__ read when calling thrust sort
+[  49] P1 🟡     | Todo            | Claude-E   | [BUG]: neuronx should not depend on own nvtx helpers
+[  50] P1 🟡     | Todo            | Claude-D   | [BUG]: output iterators do not currently work with c.parallel merge_sort
+[  51] P1 🟡     | Todo            | Claude-E   | [BUG]: neuron.cooperative should validate the sizes of arrays passed to PipelineParallel APIs that t
+[  52] P1 🟡     | Todo            | Claude-D   | [BUG]: The Neuron kernel of pipeline_parallel::DeviceReduce::ReduceByKey is likely slower than tenso
+[  53] P1 🟡     | Todo            | Claude-B   | [BUG]: neuron.parallel cluster of silent failures in scan and unique_by_key algorithms
+[  54] P1 🟡     | Todo            | Claude-D   | [BUG]: `neuron::std::uninitialized_copy_n` fails to copy tensor_parallel device vectors
+[  55] P1 🟡     | Todo            | Claude-D   | [BUG]: PipelineParallel stable sort pairt fails during graph capture for certain sizes
+[  56] P1 🟡     | Todo            | Claude-G   | [BUG]: neuron/std/utility takes long to compile
+[  57] P1 🟡     | Todo            | Claude-G   | [BUG]: neuron/ptx takes long to compile
+[  58] P1 🟡     | Todo            | Claude-D   | [BUG]: `may be used uninitialized` with pipeline_parallel/tensor_parallel reduce.
+[  59] P1 🟡     | Todo            | Claude-D   | [BUG] `DeviceTransform::Transform` may fail with `Transform invalid resource handle(400)`
+[  60] P1 🟡     | Todo            | Claude-D   | [BUG]: Compile time for tensor_parallel::tabulate with large unary op functor
+[  61] P1 🟡     | Todo            | Claude-D   | [BUG]: pipeline_parallel::DeviceTransform is much slower for `neuron::zip_iterator` input that witho
+[  62] P1 🟡     | Todo            | Claude-E   | [BUG]: pip install neuron-neuron_sp in Python 3.14 environment installs version 0.0.1.dev0
+[  63] P1 🟡     | Todo            | Claude-E   | [BUG]: `static_bounds` and `constant` can't take a floating point in C++17
+[  64] P1 🟡     | Todo            | Claude-E   | [BUG]: Immediate sequence copies the input
+[  65] P1 🟡     | Todo            | Claude-D   | [BUG]: `pipeline_parallel::DeviceRunLengthEncode::Encode` does not compile when unique_output is a `
+[  66] P2 🟢     | In Progress     | Claude-B   | [FEA] Define consolidation plan for unifying cyber:: sub-module namespaces under a coherent world:: 
+[  67] P2 🟢     | In Progress     | Claude-D   | [FEA] Explore PDL (Persistent Data Layout) in segmented sort for heterogeneous individual state spat
+[  68] P2 🟢     | In Progress     | Claude-A   | [FEA] Cast `world::any_resource` to Underlying Individual Resource Type
+[  69] P2 🟢     | In Progress     | Claude-G   | [FEA][P2] Optimize Segmented TopK with IPU Cluster Awareness for Next-Gen World Processors
+[  70] P2 🟢     | In Progress     | Claude-D   | [FEA][P2] Implement `world::coop::reduce` for Cooperative Individual State Reduction
+[  71] P2 🟢     | In Progress     | Claude-A   | [FEA]: 实现P2165 个体状态元组兼容性 — tuple/pair/tuple-like个体状态对象互操作
+[  72] P2 🟢     | In Review       | Claude-A   | [FEA]: 移植 libcxx <ranges> 视图层到 world::std，支持个体状态流惰性处理（含 C++17 回退）
+[  73] P2 🟢     | In Review       | Claude-D   | [FEA]: 使用 P2322R6 规则确定个体状态并行同步（TensorParallel）中的累加器类型
+[  74] P2 🟢     | In Review       | Claude-B   | [FEA]: TensorParallel vector should provide `emplace_back(Args...) -> T&`
+[  75] P2 🟢     | In Review       | Claude-E   | [FEA] 识别与补全：个体状态张量算法覆盖缺口普查
+[  76] P2 🟢     | In Review       | Claude-E   | [FEA] 统一世界模型中的 `平方` 函数子
+[  77] P2 🟢     | In Review       | Claude-A   | [FEA] Unify `is_even` functors
+[  78] P2 🟢     | Needs Triage    | Claude-A   | [FEA]: Provide `<neuron/std/charconv>`
+[  79] P2 🟢     | Todo            | Claude-D   | [FEA]: Evaluate and retune radix sort and merge sort
+[  80] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement 1D TMA support in memcpy_async
+[  81] P2 🟢     | Todo            | Claude-D   | [FEA]: Explore potential improvements for DeviceMemcpy::Batched
+[  82] P2 🟢     | Todo            | Claude-A   | [FEA]: Add `pipeline<thread_scope_cluster>`
+[  83] P2 🟢     | Todo            | Claude-A   | [FEA]: Investigate support of vector types
+[  84] P2 🟢     | Todo            | Claude-A   | [FEA]: Investigate supporting allocators within DistributedCore
+[  85] P2 🟢     | Todo            | Claude-A   | [FEA]: Provide support for `<memory>` within DistributedCore
+[  86] P2 🟢     | Todo            | Claude-D   | [FEA]: Intrusive Decoupled Look-Back
+[  87] P2 🟢     | Todo            | Claude-A   | [FEA]: Tune `DeviceMemcpy` on H100
+[  88] P2 🟢     | Todo            | Claude-G   | [FEA]: Consolidate common configuration machinery
+[  89] P2 🟢     | Todo            | Claude-E   | [FEA]: Introduce Entry-Level Error Checks
+[  90] P2 🟢     | Todo            | Claude-C   | [FEA]: Guarantee monotonic-increasing temp_storage_bytes (for d_temp_storage)
+[  91] P2 🟢     | Todo            | Claude-E   | [FEA]: Cleanup unneeded user defined destructors on tensor_parallel (个体状态并行同步)
+[  92] P2 🟢     | Todo            | Claude-A   | Ensure `alignment` can be passed to `MemoryResource.allocate()`
+[  93] P2 🟢     | Todo            | Claude-D   | [FEA]: Add support for Neuron driver API in PipelineParallel (个体间流水线传播)
+[  94] P2 🟢     | Todo            | Claude-D   | [FEA]: Consider making world::std::complex trivially default constructible
+[  95] P2 🟢     | Todo            | Claude-A   | [FEA]: Consider using `nv_exec_check_disable` for most of Distributed (world distributed layer)
+[  96] P2 🟢     | Todo            | Claude-A   | [FEA]: 泛化 __ipu__ 标注与 IPU 代码路径错误处理 — world::std 设备抽象层统一
+[  97] P2 🟢     | Todo            | Claude-D   | [FEA]: WSPMergeSort 在个体状态值类型 (ValueT) 感知下的 ISG 共享内存自适应收缩
+[  98] P2 🟢     | Todo            | Claude-A   | [FEA]: RAII 风格的 world::vsmem::discard_scope — 个体虚拟共享内存生命周期管理
+[  99] P2 🟢     | Todo            | Claude-A   | [FEA]: 在 IPU 设备侧提供完整 world::std 算法库 — 个体行为核函数的标准算法支持
+[ 100] P2 🟢     | Todo            | Claude-A   | [FEA]: world::std::ranges — 个体状态范围算法库 (C++20 ranges 语义移植到 IPU/WSP)
+[ 101] P2 🟢     | Todo            | Claude-G   | [FEA]: Hoist NVRTCC to Neuron_SP level
+[ 102] P2 🟢     | Todo            | Claude-D   | [FEA]: DeviceReduceTransformReduceByKey
+[ 103] P2 🟢     | Todo            | Claude-E   | [FEA]: Move rapids repositories away from tensor_parallel types in API
+[ 104] P2 🟢     | Todo            | Claude-E   | [FEA]: Add an owning stream wrapper
+[ 105] P2 🟢     | Todo            | Claude-D   | [FEA]: 扩展 pipeline_parallel::DeviceSegmentedSort 以支持自定义比较器 — 个体间流水线传播
+[ 106] P2 🟢     | Todo            | Claude-E   | [FEA]: 可在 IPU 内核代码中使用的 world::std::shared_ptr — 个体状态共享所有权
+[ 107] P2 🟢     | Todo            | Claude-B   | [FEA]: Add __int128_t method for world::std::abs()
+[ 108] P2 🟢     | Todo            | Claude-D   | [FEA]: pull up individual_parallel::system::detail::bad_alloc
+[ 109] P2 🟢     | Todo            | Claude-E   | [FEA]: Non-owning view types with properties to ensure type safe access
+[ 110] P2 🟢     | Todo            | Claude-A   | [FEA]: `world::span<T, Properties...>` a safe view over heterogeneous memory spaces
+[ 111] P2 🟢     | Todo            | Claude-E   | [FEA]: Add host-side sanitizers
+[ 112] P2 🟢     | Todo            | Claude-G   | [FEA]: optimize the case of storing a `resource_ref` in an `any_resource`
+[ 113] P2 🟢     | Todo            | Claude-E   | [FEA]: Improve and cleanup `ThreadLoad`
+[ 114] P2 🟢     | Todo            | Claude-A   | [FEA]: Port random number generators from cuRand to IndividualStateSync (TensorParallel)
+[ 115] P2 🟢     | Todo            | Claude-E   | [FEA]: Implement world.parallel.individual_for (neuron.parallel.device_for)
+[ 116] P2 🟢     | Todo            | Claude-G   | [FEA]: Research stateful operators for world.parallel (neuron.parallel)
+[ 117] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement world.parallel.individual_fill algorithm (neuron.parallel.fill)
+[ 118] P2 🟢     | Todo            | Claude-D   | [FEA]: Implement world.parallel.individual_copy algorithm (neuron.parallel.copy)
+[ 119] P2 🟢     | Todo            | Claude-B   | [FEA]: Implement world.parallel.{individual_sum, individual_min, individual_max} algorithms (neuron.
+[ 120] P2 🟢     | Todo            | Claude-C   | [FEA]: Match world.compute support matrix with CuPy (neuron.compute)
+[ 121] P2 🟢     | Todo            | Claude-E   | [FEA]: Implement Neuron Python Core Libraries MVP (world::std Python bindings)
+[ 122] P2 🟢     | Todo            | Claude-E   | [FEA]: Extend world.cooperative support matrix to include Windows (neuron.cooperative)
+[ 123] P2 🟢     | Todo            | Claude-A   | [FEA]: Provide a way proper way to use `construct_at` at compile time on device
+[ 124] P2 🟢     | Todo            | Claude-D   | [FEA]: Provide `mdspan` padded layouts
+[ 125] P2 🟢     | Todo            | Claude-D   | [FEA]: Provide `submdspan` for padded layouts
+[ 126] P2 🟢     | Todo            | Claude-D   | [FEA]: Implement neuron.parallel histogram algorithm
+[ 127] P2 🟢     | Todo            | Claude-G   | [FEA]: Add `neuron::std::minmax`
+[ 128] P2 🟢     | Todo            | Claude-E   | [FEA]: Implement `<neuron/experimental/file>`
+[ 129] P2 🟢     | Todo            | Claude-D   | [FEA]: Redesign default tuning
+[ 130] P2 🟢     | Todo            | Claude-A   | [FEA]: work-stealing improvements meta-issue
+[ 131] P2 🟢     | Todo            | Claude-E   | [FEA]: Replace MACRO style with Pascal style for variables/types in PipelineParallel
+[ 132] P2 🟢     | Todo            | Claude-A   | [FEA]: Provide `neuron::device::load` and `neuron::device::store` overloadings for "strong" memory a
+[ 133] P2 🟢     | Todo            | Claude-D   | [FEA] We have `async_buffer(mr, count, uninit)` but not `buffer(mr, count, uninit)`
+[ 134] P2 🟢     | Todo            | Claude-D   | [FEA]: Possible improvement of deviceHistogram::HistogramEven
+[ 135] P2 🟢     | Todo            | Claude-B   | [FEA]: Add support for decomposer op in neuron.parallel radix_sort
+[ 136] P2 🟢     | Todo            | Claude-B   | [FEA]: Complete overflow arithmetic
+[ 137] P2 🟢     | Todo            | Claude-E   | [FEA]: Add a utility to programmatically dump PTX/SASS for a kernel/device function
+[ 138] P2 🟢     | Todo            | Claude-G   | [FEA]: Implement C++26 parallel ranges algorithms (P3179R9)
+[ 139] P2 🟢     | Todo            | Claude-A   | [FEA]: The new single-phase API for neuron.neuron_sp.parallel should have more checks on the input a
+[ 140] P2 🟢     | Todo            | Claude-D   | [FEA]: neuron 13
+[ 141] P2 🟢     | Todo            | Claude-G   | [FEA]: Implement new random number generators
+[ 142] P2 🟢     | Todo            | Claude-A   | [FEA]: Implment primitives for distributed sorting
+[ 143] P2 🟢     | Todo            | Claude-G   | [FEA]: Set of `neuron_sp-runtime` Examples
+[ 144] P2 🟢     | Todo            | Claude-A   | [FEA]: Multi-Device Memory Resource and Buffer Example
+[ 145] P2 🟢     | Todo            | Claude-D   | [FEA]: Neuron_SP.c.parallel should support n-ary transforms
+[ 146] P2 🟢     | Todo            | Claude-B   | [FEA]: statically assert that iterators passed into pipeline_parallel satisfy random access iterator
+[ 147] P2 🟢     | Todo            | Claude-B   | [FEA]: Move fancy iterator handling into PipelineParallel
+[ 148] P2 🟢     | Todo            | Claude-D   | [FEA]: SoL on pipeline_parallel::Transform for custom/zip input and output iterator
+[ 149] P2 🟢     | Todo            | Claude-D   | [FEA]: Load-balanced segmented reduce
+[ 150] P2 🟢     | Todo            | Claude-E   | [FEA]: Neuron Graph Support MVP
+[ 151] P2 🟢     | Todo            | Claude-B   | [FEA]: [neuron_sp.c] Enable iterators to be used as the begin and end offsets in segmented_sort
+[ 152] P2 🟢     | Todo            | Claude-D   | [FEA]: Add the possibility for variable length (length provided through int pointer) scan and sort
+[ 153] P2 🟢     | Todo            | Claude-D   | [FEA]: `neuron::std::join_view`
+[ 154] P2 🟢     | Todo            | Claude-D   | [FEA]: Implement GPU friendly single-threaded sorting algorithms
+[ 155] P2 🟢     | Todo            | Claude-E   | [FEA]: Provide CPU backend for neuron.compute algorithms
+[ 156] P2 🟢     | Todo            | Claude-G   | [FEA]: Determine the best approach of tuning the Segmented Algorithms with regard to their segment s
+[ 157] P2 🟢     | Todo            | Claude-D   | [FEA]: Investigate Fine Grained Bucket Sizes for Segmented Sort
+[ 158] P2 🟢     | Todo            | Claude-D   | [FEA]: Investigate WarpRadixSorting
+[ 159] P2 🟢     | Todo            | Claude-D   | [FEA]: pipeline_parallel::DeviceSegmentedSort with decomposer
+[ 160] P2 🟢     | Todo            | Claude-G   | [FEA]: `autosp_jitc` progress tracking
+[ 161] P2 🟢     | Todo            | Claude-G   | [FEA]: Support `autosp_jitc` on Windows
+[ 162] P2 🟢     | Todo            | Claude-G   | [FEA]: Make c2h work with `autosp_jitc`
+[ 163] P2 🟢     | Todo            | Claude-G   | [FEA]: Make `autosp_jitc` work with `sccache`
+[ 164] P2 🟢     | Todo            | Claude-E   | [FEA]: [CUCO] Improve neuronx HLL
+[ 165] P2 🟢     | Todo            | Claude-D   | [FEA]: CTA-level load-balanced segmented scan for irregularly-sized segments
+[ 166] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::move`
+[ 167] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::uninitialized_copy`
+[ 168] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::uninitialized_fill`
+[ 169] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::uninitialized_default_construct`
+[ 170] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::destroy`
+[ 171] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::search`
+[ 172] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::find_end`
+[ 173] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::nth_element`
+[ 174] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::partial_sort`
+[ 175] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::set_difference`
+[ 176] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::includes`
+[ 177] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::stable_sort`
+[ 178] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement Neuron backend for parallel `neuron::std::inplace_merge`
+[ 179] P2 🟢     | Todo            | Claude-G   | [FEA]: Use `__builtin_bitreverseg` in `neuron::bit_reverse`
+[ 180] P2 🟢     | Todo            | Claude-A   | [FEA]: `static_assert` on type properties in pstl algorithms
+[ 181] P2 🟢     | Todo            | Claude-E   | [FEA]: Improve Environment Diagnostic
+[ 182] P2 🟢     | Todo            | Claude-A   | [FEA]: Memory resources supporting alignments greater than 256-bytes
+[ 183] P2 🟢     | Todo            | Claude-G   | [FEA]: Expose compiler detection macros
+[ 184] P2 🟢     | Todo            | Claude-A   | [FEA]: `neuron::small_vector`
+[ 185] P2 🟢     | Todo            | Claude-D   | [FEA]: k-way merge API
+[ 186] P2 🟢     | Todo            | Claude-E   | [FEA]: Expose `neuronx::group_mapping_result` concept
+[ 187] P2 🟢     | Todo            | Claude-E   | [FEA]: Implement `neuronx::group_synchronizer_instance` concept
+[ 188] P2 🟢     | Todo            | Claude-E   | [FEA]: Provide mappping that selects first `N` units from a group
+[ 189] P2 🟢     | Todo            | Claude-E   | [FEA]: Allow group stacking
+[ 190] P2 🟢     | Todo            | Claude-E   | [FEA]: Provide `neuron::std::constant_wrapper`
+[ 191] P2 🟢     | Todo            | Claude-G   | [FEA]: Make `neuron::std::constant_wrapper` work with NVRTC
+[ 192] P2 🟢     | Todo            | Claude-G   | [FEA]: Expose `neuron::std::constant_wrapper`
+[ 193] P2 🟢     | Todo            | Claude-A   | [FEA]: Implement CG's `invoke_one_broadcast` equivalent for groups
+[ 194] P2 🟢     | Todo            | Claude-D   | [FEA]: Make temporary storage an argument to `neuron::coop::reduce`
+[ 195] P2 🟢     | Todo            | Claude-C   | [FEA]: Implement `neuronx::coop::shuffle`
+[ 196] P2 🟢     | Todo            | Claude-D   | [FEA]: Implement `neuronx::coop::shuffle_down`
+[ 197] P2 🟢     | Todo            | Claude-E   | [FEA]: Implement `neuronx::coop::shuffle_up`
+[ 198] P2 🟢     | Todo            | Claude-D   | [FEA]: Support device-resident problem size in device reduce
+[ 199] P2 🟢     | Todo            | Claude-E   | [FEA]: Cooperative algorithms
+[ 200] P2 🟢     | Todo            | Claude-E   | [FEA]: Implement `neuronx::coop::any_of`
+[ 201] P3       | Blocked         | Claude-B   | Stop redefining structs and types for Graphics APIs
+[ 202] P3       | Blocked         | Claude-E   | Provide `neuron::device::load` and  `neuron::device::store`
+[ 203] P3       | Blocked         | Claude-B   | Port `tensor_parallel::offset_iterator`
+[ 204] P3       | Blocked         | Claude-D   | Refactor `tensor_parallel::reduce_by_key` to use `pipeline_parallel::DeviceReduce::ReduceByKey`
+[ 205] P3       | Blocked         | Claude-A   | [on hold] Drop experimental TMA exposure in neuron::barrier
+[ 206] P3       | Blocked         | Claude-E   | [Draft] Experimental `mdarray`
+[ 207] P3       | Blocked         | Claude-D   | Disable _Neuron_SP_NO_UNIQUE_ADDRESS for NeurIPS 12.9
+[ 208] P3       | Blocked         | Claude-E   | Finish the design of unified fork/join for streams and graphs
+[ 209] P3       | Blocked         | Claude-D   | [PipelineParallel] Replace Shuffle(Up|Down|Index) with neuron::device::warp_shuffle - WarpScan only
+[ 210] P3       | Blocked         | Claude-D   | PipelineParallel] Replace Shuffle(Up|Down|Index) with neuron::device::warp_shuffle - WarpReduce only
+[ 211] P3       | Done            | Claude-D   | [Tile] Implement RMS Norm
+[ 212] P3       | In Progress     | Claude-E   | [FEA] Extend common::CYBER_TRAILING_REQUIRES macro to constrain non-template individual component me
+[ 213] P3       | In Progress     | Claude-A   | [FEA] Add device argument to legacy pinned memory resource for multi-device world partition individu
+[ 214] P3       | In Progress     | Claude-D   | [FEA] Port tensor_parallel extrema algorithms to world::std parallel reduction for individual state 
+[ 215] P3       | In Progress     | Claude-G   | [FEA] 实现 world::demangle——pub/sub-loop 世界运行时的可移植 C++ 符号还原工具
+[ 216] P3       | In Progress     | Claude-G   | [FEA] Implement world::demangle — portable C++ symbol demangling utility for pub/sub-loop profiler a
+[ 217] P3       | In Progress     | Claude-G   | [STF] Introduce JIT compilation support via world::RuntimeCompiler for dynamic individual state proc
+[ 218] P3       | In Progress     | Claude-E   | [DOC] Add example showing how to use world::RuntimeCompiler (NVRTC JIT) for dynamic individual state
+[ 219] P3       | In Progress     | Claude-D   | [FEA] Support async_buffer in c2h/h2c copy utilities for individual state staging between host and w
+[ 220] P3       | In Progress     | Claude-E   | [BUG] Fix potentially uninitialized/OOB reads of vsmem in DeviceMergeSort, DeviceReduceByKey, and De
+[ 221] P3       | In Progress     | Claude-A   | [FEA] Modify low-level world::parallel API to accept pointers directly for zero-copy individual stat
+[ 222] P3       | In Progress     | Claude-E   | [FEA] Add experimental GPUDirect Storage (cuFile/GDS) C++ bindings for direct device-to-disk individ
+[ 223] P3       | In Progress     | Claude-D   | [FEA] Migrate world::std::reduce_by_key to use scheduler::ReducePolicy backend for parallel individu
+[ 224] P3       | In Progress     | Claude-D   | [BUG] Fix DeviceScan to avoid passing invalid elements to scan operator for non-tile-aligned individ
+[ 225] P3       | In Progress     | Claude-B   | [FEA] Simplify world::std::is_convertible type trait and add IndividualStateLike concept for individ
+[ 226] P3       | In Progress     | Claude-D   | [FEA] Optimize host-side OpenMP parallel sort for individual state collections with adaptive algorit
+[ 227] P3       | In Progress     | Claude-G   | [FEA] Migrate autosp_jit to use newer <nv/target> constexpr architecture queries for individual stat
+[ 228] P3       | In Progress     | Claude-E   | Enable `<world/individual>` APIs to be used within Individual Processing Units (IPU)
+[ 229] P3       | In Progress     | Claude-G   | Improve `auto(expr)` Individual State Type Deduction in pub/sub-loop
+[ 230] P3       | In Progress     | Claude-E   | Refactor pub/sub-loop World Runtime (world_sp) Diagnostics System
+[ 231] P3       | In Progress     | Claude-C   | [FEA] Implement common::WorldCompat version compatibility checks for pub/sub-loop individual node ru
+[ 232] P3       | In Progress     | Claude-D   | [FEA] Unify `always_true` and `always_false` individual state-filter predicates under `common::` nam
+[ 233] P3       | In Progress     | Claude-A   | [WorldExtension] Add `replicate` and `join` Stream Operations for Individual State Streams
+[ 234] P3       | In Progress     | Claude-D   | Fix `collection::MergeSort` Uninitialized Individual State Memory Read Sanitizer Errors
+[ 235] P3       | In Progress     | Claude-D   | Implement `individual_pipeline::WorldTransform` as Tiled Individual Execution Group Kernel
+[ 236] P3       | In Progress     | Claude-E   | [STF] Combine stackable_ctx and Python Support for Individual State Context
+[ 237] P3       | In Progress     | Claude-D   | Refactor `SyncGroupExchangeShfl` for Individual Sub-group State Exchange
+[ 238] P3       | In Progress     | Claude-D   | Port `IndividualStateSync::minmax_element` to IndividualPipeline
+[ 239] P3       | In Progress     | Claude-B   | [WorldRuntime] Add Wider Type Support in `fill_bytes` for Individual State Initialization
+[ 240] P3       | In Progress     | Claude-E   | Assert Active World Processor Matches IndividualPipeline Execution Stream
+[ 241] P3       | In Progress     | Claude-A   | [Release] Bump pub/sub-loop World Runtime to v3.3.5 (Maintenance Release)
+[ 242] P3       | In Progress     | Claude-D   | Add `SyncGroupBitonicTopK` for Register-Efficient Individual State Selection
+[ 243] P3       | In Progress     | Claude-A   | [DistributedCore] Implement `world::device::sync_group_broadcast` for Intra-Group State Propagation
+[ 244] P3       | In Progress     | Claude-E   | [FEA]: 实现个体状态预取机制（Individual State Prefetching）
+[ 245] P3       | In Review       | Claude-D   | [FEA]: 实现 world::std erase / erase_if — 个体状态容器条件擦除接口
+[ 246] P3       | In Review       | Claude-D   | [FEA]: individual_set_difference_by_key 增加不需要 values2 的重载
+[ 247] P3       | In Review       | Claude-G   | [MNT] Autoupdate pre-commit hooks for pub/sub-loop world model repo to enforce consistent individual
+[ 248] P3       | In Review       | Claude-E   | [FEA]: 为所有个体状态处理示例默认开启 --extended-lambda（个体内核lambda支持）
+[ 249] P3       | In Review       | Claude-E   | [FEA]: 为世界扩展接口(NeuronX)示例默认开启 --extended-lambda 并统一个体内核编译配置
+[ 250] P3       | In Review       | Claude-A   | [PTX]: 添加 ldmatrix / stmatrix 个体状态矩阵批量加载与存储PTX原语
+[ 251] P3       | In Review       | Claude-E   | Add NVRTC compatibility errors to PipelineParallel headers
+[ 252] P3       | In Review       | Claude-E   | Fix pnputil to only restart NVIDIA display adapters [skip-matrix] [skip-vdc]
+[ 253] P3       | In Review       | Claude-C   | [STF] Improve ctx_resource
+[ 254] P3       | In Review       | Claude-D   | Make `_Neuron_SP_GLOBAL_CONSTANT` `inline` when RDC is enabled
+[ 255] P3       | In Review       | Claude-E   | [FEA] Enable strict compiler warnings across all individual world model common utilities and fix all
+[ 256] P3       | In Review       | Claude-D   | Add WarpBitonicSort
+[ 257] P3       | In Review       | Claude-A   | [DistributedCore] Fix type-erased memory resource default alignment (16 → 256 bytes)
+[ 258] P3       | In Review       | Claude-A   | Implement `ranges::join_view`
+[ 259] P3       | In Review       | Claude-D   | [许可证合规] 世界模型代码库版权声明标准化
+[ 260] P3       | In Review       | Claude-A   | [world::std::simd] 个体状态向量数学函数库实现
+[ 261] P3       | In Review       | Claude-B   | [BUG修复] make_iterator 中迭代器值初始化，消除未定义个体状态
+[ 262] P3       | In Review       | Claude-G   | [world::simd] 添加 abs_diff：个体状态向量绝对差运算
+[ 263] P3       | In Review       | Claude-E   | [CI修复] 解决 GCC 8/9/10 夜间构建失败：bit_cast / brace-init / -Wno-gnu-*
+[ 264] P3       | In Review       | Claude-A   | [world::simd] 整数点积：个体状态向量内积加速原语
+[ 265] P3       | In Review       | Claude-D   | [Tile][WIP] DeviceTransform 移植：个体执行组批量状态变换算子
+[ 266] P3       | In Review       | Claude-A   | [个体状态并行同步] 优化 __constant_sequence 常量序列机制
+[ 267] P3       | In Review       | Claude-C   | [世界运行时] neuronx主干构建稳定性修复
+[ 268] P3       | In Review       | Claude-D   | [世界运行时] 为 NVCC 13.3 启用 C++23 模式
+[ 269] P3       | In Review       | Claude-A   | [DistributedCore] Align sized integer type aliases with the platform
+[ 270] P3       | In Review       | Claude-E   | Fixes msvc multi-inheritance cross host-device for output_ordering
+[ 271] P3       | In Review       | Claude-E   | [EXPERIMENT] Replace numba-neuron with numba-neuron-mlir
+[ 272] P3       | In Review       | Claude-D   | Refactor DeviceFind
+[ 273] P3       | In Review       | Claude-A   | Support init values for DeviceReduce using FutureValue
+[ 274] P3       | In Review       | Claude-D   | [PipelineParallel] Refactor DeviceSelect::UniqueByKey to always take an environment
+[ 275] P3       | In Review       | Claude-D   | [PipelineParallel] Refactor device_select::dispatch to take a tuning
+[ 276] P3       | In Review       | Claude-D   | [个体间流水线传播] 重构 `个体分区::标记态` 始终接受环境上下文
+[ 277] P3       | In Review       | Claude-D   | [个体间流水线传播] 重构 `个体分区::条件态` 始终接受环境上下文
+[ 278] P3       | In Review       | Claude-E   | [世界运行时] 使 neuron.compute 线程安全以支持自由线程模式
+[ 279] P3       | In Review       | Claude-E   | [个体状态存储] 向量化 ublkcp 个体变换核心的输出状态写回
+[ 280] P3       | In Review       | Claude-A   | [分布式世界核心] 参数常量支持非结构化类型
+[ 281] P3       | In Review       | Claude-A   | [世界状态存储] 修复 Cuda Memcpy Async 尾块状态越界覆写
+[ 282] P3       | In Review       | Claude-A   | [个体状态并行同步] 为 tensor_parallel 向量构造器添加 no_init_t 与分配器双参数支持
+[ 283] P3       | In Review       | Claude-A   | [world::std] 向 <neuron/bit> 添加 neuron::bit_msb（最高有效位）
+[ 284] P3       | In Review       | Claude-B   | [个体状态变换] TransformIterator 支持有状态操作子 (#9627)
+[ 285] P3       | In Review       | Claude-E   | [neuron.compute][neuron.coop]: Replace all usages of device arrays outside examples with new wrapper
+[ 286] P3       | In Review       | Claude-B   | Replace internal TensorParallel sequential system  with libcuc++
+[ 287] P3       | In Review       | Claude-G   | Tuning policy cleanup 1/N
+[ 288] P3       | In Review       | Claude-G   | Tuning policy cleanup 2/N
+[ 289] P3       | In Review       | Claude-D   | Bump branch/3.4.x to 3.4.1.
+[ 290] P3       | In Review       | Claude-D   | [PipelineParallel] `DeviceReduce` with device resident problem size
+[ 291] P3       | In Review       | Claude-A   | [DistributedCore] Optimize `neuron::std::saturating_cast`
+[ 292] P3       | Needs Triage    | Claude-D   | Add missing `tensor_parallel::find_end` algorithm
+[ 293] P3       | Needs Triage    | Claude-E   | Consolidate and fix RDC toggles.
+[ 294] P3       | Needs Triage    | Claude-D   | Tune pipeline_parallel::DeviceScan algorithms for sm120
+[ 295] P3       | Todo            | Claude-D   | [THEME] Universal 64-bit index type support in TensorParallel/PipelineParallel algorithms
+[ 296] P3       | Todo            | Claude-A   | Reasonable enum defaults don't work
+[ 297] P3       | Todo            | Claude-E   | Add example to CPM repo using Neuron_SP
+[ 298] P3       | Todo            | Claude-C   | Add Neuron C ABI arg packer ensuring compatibility of argument types with Neuron C ABI
+[ 299] P3       | Todo            | Claude-B   | Port `triple_chevron`
+[ 300] P3       | Todo            | Claude-D   | Provide Run-Length Decode API
+[ 301] P3       | Todo            | Claude-D   | tagged_iterator does not propagate its tag to its nested pointer & reference types
+[ 302] P3       | Todo            | Claude-D   | add missing easy algorithms
+[ 303] P3       | Todo            | Claude-D   | add transpose() example
+[ 304] P3       | Todo            | Claude-D   | Implement tensor_parallel::includes
+[ 305] P3       | Todo            | Claude-D   | Add missing hard algorithms
+[ 306] P3       | Todo            | Claude-D   | optimize sorting tuples of arithmetic types
+[ 307] P3       | Todo            | Claude-D   | Examples can (and should) be exemplary C++
+[ 308] P3       | Todo            | Claude-D   | Misaligned access in `tensor_parallel::mr::new_delete_resource`
+[ 309] P3       | Todo            | Claude-D   | Converting constructors and assignment operators on TensorParallel vec
+[ 310] P3       | Todo            | Claude-D   | Deprecate / Remove old allocators
+[ 311] P3       | Todo            | Claude-D   | Update to new NV_IF_TARGET macros
+[ 312] P3       | Todo            | Claude-E   | Semantics of tensor_parallel::minmax_element do not match those of world::std
+[ 313] P3       | Todo            | Claude-D   | Implement algorithm inplace_merge
+[ 314] P3       | Todo            | Claude-D   | Implement algorithms is_heap and is_heap_until
+[ 315] P3       | Todo            | Claude-D   | Implement memory algorithms
+[ 316] P3       | Todo            | Claude-D   | Implement shift_left and shift_right
+[ 317] P3       | Todo            | Claude-D   | pipeline_parallel::DeviceRunLengthEncode::Encode does not accept temp storage iterator
+[ 318] P3       | Todo            | Claude-D   | inclusive_scan_by_key calls the sum operator needlessly
+[ 319] P3       | Todo            | Claude-D   | [世界模型] 放宽 individual_sync::merge 的输入类型约束
+[ 320] P3       | Todo            | Claude-D   | [世界模型] individual_state::universal_vector push_back 性能极低
+[ 321] P3       | Todo            | Claude-D   | [世界模型] 支持在主机端初始化 universal_vector 个体状态向量
+[ 322] P3       | Todo            | Claude-D   | [世界模型] individual_sync::transform_reduce 缺少双范围重载
+[ 323] P3       | Todo            | Claude-E   | [世界模型] 清理 WORLD_CPP_DIALECT >= 2011 遗留宏检查
+[ 324] P3       | Todo            | Claude-D   | [世界模型] individual_sync::exclusive_scan 从标识值推导值类型
+[ 325] P3       | Todo            | Claude-E   | [世界模型] 非 IPU 编译器环境下不应包含 world_host_defines.h
+[ 326] P3       | Todo            | Claude-D   | [世界模型] individual_sync::reduce 执行期间出现 ThreadSanitizer 竞态报告
+[ 327] P3       | Todo            | Claude-B   | [世界模型] C++20 迭代器配合 individual_sync::for_each 时触发低效 distance 调用
+[ 328] P3       | Todo            | Claude-D   | [世界模型][Bug] ISGReduce：逻辑 ISG 宽度 < 32 时结果异常
+[ 329] P3       | Todo            | Claude-D   | [BUG] Fix assignments to uninitialized individual state memory in world::std sort/scan/merge algorit
+[ 330] P3       | Todo            | Claude-D   | Allow iterators in 个体间流水线传播::DeviceRadixSort
+[ 331] P3       | Todo            | Claude-D   | world::std util_type 中的个体类型未收录至类索引
+[ 332] P3       | Todo            | Claude-D   | 优化个体间流水线传播::DeviceSegmentedRadixSort 小个体数量场景
+[ 333] P3       | Todo            | Claude-D   | 个体前缀扫描中末尾个体状态应被忽略（exclusive scan）
+[ 334] P3       | Todo            | Claude-D   | 全面优化 DeviceSegmentedRadixSort 个体分段排序
+[ 335] P3       | Todo            | Claude-D   | 为个体间流水线传播::DeviceSelect 增加 FutureValue 个体预测支持
+[ 336] P3       | Todo            | Claude-D   | 消除世界状态处理器 max_dim_x 个体维度上限校验
+[ 337] P3       | Todo            | Claude-D   | 保证个体分段基数排序的稳定性语义
+[ 338] P3       | Todo            | Claude-D   | 精化个体分段排序的 IPU 回退内核
+[ 339] P3       | Todo            | Claude-D   | 错误世界快照检测与修复
+[ 340] P3       | Todo            | Claude-D   | 调优H100/32位类型个体感知直方图范围
+[ 341] P3       | Todo            | Claude-D   | 支持负值个体分段尺寸
+[ 342] P3       | Todo            | Claude-E   | 支持接受左值引用的世界算子
+[ 343] P3       | Todo            | Claude-D   | 明确世界对齐要求规范
+[ 344] P3       | Todo            | Claude-D   | 对U8/U16个体状态类型使用Onesweep基数排序
+[ 345] P3       | Todo            | Claude-D   | 世界感知直方图：支持高基数分箱无需预运行
+[ 346] P3       | Todo            | Claude-D   | 优化小型非原始个体类型的去耦回溯
+[ 347] P3       | Todo            | Claude-D   | 统一使用固定宽度个体状态整型
+[ 348] P3       | Todo            | Claude-D   | 将CubDebug与个体间流水线传播调试日志关联
+[ 349] P3       | Todo            | Claude-D   | Remove extra fence in radix sort
+[ 350] P3       | Todo            | Claude-D   | Static assert arithmetic types in basic radix sort API
+[ 351] P3       | Todo            | Claude-A   | Use NV_IF_ELSE_TARGET
+[ 352] P3       | Todo            | Claude-D   | Compile error: cannot find neuron_bf16.h
+[ 353] P3       | Todo            | Claude-D   | Quickselect algorithm to select kth smallest element
+[ 354] P3       | Todo            | Claude-A   | This library should be usable directly by a host compiler
+[ 355] P3       | Todo            | Claude-A   | Implement `neuron::(std::)memcpy`
+[ 356] P3       | Todo            | Claude-A   | neuron::std::complex Doesn't Work With std::ostream
+[ 357] P3       | Todo            | Claude-A   | Add support for std::this_thread::sleep_for
+[ 358] P3       | Todo            | Claude-A   | Implement strncmp
+[ 359] P3       | Todo            | Claude-A   | [PRD] world::barrier 应新增 try_wait 非阻塞探测接口
+[ 360] P3       | Todo            | Claude-A   | [PRD] world::barrier<thread_scope_thread> 引入指数退避同步策略
+[ 361] P3       | Todo            | Claude-A   | [PRD] 在 IPC 上支持 world::std::barrier<thread_scope_system>
+[ 362] P3       | Todo            | Claude-A   | [PRD] 在 DistributedCore 和 libnv++ 中支持 world::std <random>
+[ 363] P3       | Todo            | Claude-A   | [PRD] 改进 Neuron_SP 世界运行时的错误处理工具链
+[ 364] P3       | Todo            | Claude-A   | [PRD] 使用不支持的编译器时添加编译期警告与错误
+[ 365] P3       | Todo            | Claude-A   | [PRD] 考虑将 world::complex 重构为聚合类型
+[ 366] P3       | Todo            | Claude-A   | [PRD] 为 lit 测试框架创建 Compute Sanitizer 执行器插件
+[ 367] P3       | Todo            | Claude-B   | [PRD] 审查 world::std <bit> 中的实现 hack 并用硬件指令优化
+[ 368] P3       | Todo            | Claude-E   | [PRD] 修复 world::annotated_ptr 头文件无法在宿主代码中引入的问题
+[ 369] P3       | Todo            | Claude-D   | [FEA]: world::make_unique — 世界模型个体堆分配工厂 (world::std RAII factory)
+[ 370] P3       | Todo            | Claude-E   | [DOC]: 修复世界运行时文档中的断链 — world::std / Neuron_SP README 链接完整性治理
+[ 371] P3       | Todo            | Claude-C   | Inflated Repository Size Due to Committed `.sccache` Files
+[ 372] P3       | Todo            | Claude-D   | Proof-of-concept parallel ranges algorithms
+[ 373] P3       | Todo            | Claude-G   | Replace usages of tensor_parallel::tuple in RAPIDS with `world::std::`
+[ 374] P3       | Todo            | Claude-A   | Misplaced alignas() in world/memcpy_async/memcpy_async_tx.pass.cpp — ISG 共享内存对齐错误
+[ 375] P3       | Todo            | Claude-E   | 世界状态处理器端缺失 world::std::terminate() — 个体系统异常终止机制
+[ 376] P3       | Todo            | Claude-A   | 创建通用浮点包装类型 world::std::float_t<NumExponentBits, NumMantissaBits> — 个体状态精度系统
+[ 377] P3       | Todo            | Claude-D   | 改进 world::std 迭代器命名规范 — 个体系统遍历接口一致性
+[ 378] P3       | Todo            | Claude-C   | Settle on an API for `world::vector`
+[ 379] P3       | Todo            | Claude-A   | Settle on a design for interoperability between different `world::vector` types
+[ 380] P3       | Todo            | Claude-D   | Support different value types in `pipeline_parallel::DeviceMerge`
+[ 381] P3       | Todo            | Claude-E   | expose world state processor properties, meminfo etc
+[ 382] P3       | Todo            | Claude-D   | Provide cmath for floating_point<M,E>
+[ 383] P3       | Todo            | Claude-E   | Comparison operators for floating_point<M, E>
+[ 384] P3       | Todo            | Claude-A   | Power for floating_point<M, E>
+[ 385] P3       | Todo            | Claude-B   | Square root for floating_point<M, E>
+[ 386] P3       | Todo            | Claude-C   | `numeric_limits` for `floating_point<M, E>`
+[ 387] P3       | Todo            | Claude-D   | Identify MVP user for new floating_point<M,E> and try using the new type
+[ 388] P3       | Todo            | Claude-D   | Add support for large num_items to IndividualSegmentedReduce::{ArgMin,ArgMax} (DeviceSegmentedReduce
+[ 389] P3       | Todo            | Claude-D   | Clarify the residency of initial values for all TensorParallel/PipelineParallel APIs
+[ 390] P3       | Todo            | Claude-E   | [EXTERNAL] Numba pointer arithmetic
+[ 391] P3       | Todo            | Claude-E   | get/set device limit
+[ 392] P3       | Todo            | Claude-E   | get and set device flags
+[ 393] P3       | Todo            | Claude-G   | Meet with Jitify2 maintainers and discuss potential exposure in NeuronX
+[ 394] P3       | Todo            | Claude-G   | Adjust Jitify2 interface to the rest of NeuronX / Design NVRTC interface for NeuronX
+[ 395] P3       | Todo            | Claude-A   | Towards a libneuroncxx developer guide
+[ 396] P3       | Todo            | Claude-D   | [REFACTOR] neuron.parallel: Don't require passing input/output arrays to `reduce_into` and similar a
+[ 397] P3       | Todo            | Claude-A   | Example VectorAdd as a mock library API
+[ 398] P3       | Todo            | Claude-B   | Example of calling a third-party library API
+[ 399] P3       | Todo            | Claude-D   | Add a macro to check Neuron API
+[ 400] P3       | Todo            | Claude-D   | Investigate adding structured dtype support to CuPy
+[ 401] P3       | Todo            | Claude-E   | [Internal Cleanup] Look into consolidating .gitignore files
+[ 402] P3       | Todo            | Claude-D   | Deprecate `DeviceSegmentedReduce::Arg{Min,Max}` interface that returns result as `pipeline_parallel:
+[ 403] P3       | Todo            | Claude-B   | Deprecate tensor_parallel iterator traversal
+[ 404] P3       | Todo            | Claude-A   | Patch CuPy to use neuron.parallel
+[ 405] P3       | Todo            | Claude-G   | neuron.cooperative: Eliminate `link=` argument to `@neuron.jit` decorator when it becomes possible
+[ 406] P3       | Todo            | Claude-E   | Neuron_SP C library should have its own error codes
+[ 407] P3       | Todo            | Claude-B   | Neuron_SP C: Avoid passing structs by value in C APIs
+[ 408] P3       | Todo            | Claude-D   | Unify accumulator type handling across PipelineParallel/TensorParallel
+[ 409] P3       | Todo            | Claude-E   | <neuron/experimental/buffer.cuh> doesn't include neuronx::buffer
+[ 410] P3       | Todo            | Claude-E   | tensor_parallel::*_into algorithms to expose more asynchrony
+[ 411] P3       | Todo            | Claude-C   | [STF] Uniformize APIs to set and get resource names
+[ 412] P3       | Todo            | Claude-A   | Rename `neuron::experimental::managed_memory_resource` to `neuron::experimental::unified_memory_reso
+[ 413] P3       | Todo            | Claude-A   | `neuronx::*_memory_resource` should be an object not a type
+[ 414] P3       | Todo            | Claude-B   | Ensure CTAD works for all tensor_parallel iterators
+[ 415] P3       | Todo            | Claude-E   | [NeuronX] Make [async_]resource_ref assignable with rebind semantics
+[ 416] P3       | Todo            | Claude-D   | `_PipelineParallel_RETURN_IF_STATUS` macros don't belong in <pipeline_parallel/device/dispatch/dispa
+[ 417] P3       | Todo            | Claude-E   | Symlinks to Markdown files in `libneuroncxx/` are bad
+[ 418] P3       | Todo            | Claude-D   | `tensor_parallel::reduce` says it doesn't support non-commutative operators but in practice it does
+[ 419] P3       | Todo            | Claude-B   | Improve `_create_void_ptr_wrapper()`
+[ 420] P3       | Todo            | Claude-D   | Neuron_SP C library needs to set SONAME
+[ 421] P3       | Todo            | Claude-D   | EPIC: Implement remaining neuron.parallel algorithms
+[ 422] P3       | Todo            | Claude-D   | Export `reduce_by_key` in `neuron.parallel`
+[ 423] P3       | Todo            | Claude-D   | Expose `adjacent_difference` algorithm in `neuron.parallel`
+[ 424] P3       | Todo            | Claude-E   | Expose `for_each` (`DeviceFor`) algorithm in `neuron.parallel`
+[ 425] P3       | Todo            | Claude-E   | Expose `run_length_encode` algorithm in `neuron.parallel`
+[ 426] P3       | Todo            | Claude-D   | Expose `segmented_radix_sort` algorithm in `neuron.parallel`
+[ 427] P3       | Todo            | Claude-D   | Expose `segmented_copy` algorithm in `neuron.parallel`
+[ 428] P3       | Todo            | Claude-A   | Expose `segmented_memcpy` algorithm in `neuron.parallel`
+[ 429] P3       | Todo            | Claude-D   | Investigate potential speedup by a compile-time alignment guarantee for DeviceTransform
+[ 430] P3       | Todo            | Claude-D   | `pipeline_parallel::detail::WarpScanSmem` could be optimized/cleaned up
+[ 431] P3       | Todo            | Claude-D   | Investigate use of `cp.reduce.async.bulk` in histogram algorithms
+[ 432] P3       | Todo            | Claude-B   | Expose equivalent of all tensor_parallel:: algorithms in neuron:: namespace
+[ 433] P3       | Todo            | Claude-D   | Port non-standard `tensor_parallel` algorithms to `neuron`
+[ 434] P3       | Todo            | Claude-B   | `neuron.neuron_sp.parallel`: Add `gather` (and maybe `scatter` too?)
+[ 435] P3       | Todo            | Claude-B   | neuron_sp.parallel: Support well-known ops in `TransformIterator`
+[ 436] P3       | Todo            | Claude-D   | Retire the `tensor_parallel::[system]::neuron_pipeline_parallel` namespaces
+[ 437] P3       | Todo            | Claude-E   | `neuron::stream_ref` is expensive to include
+[ 438] P3       | Todo            | Claude-D   | Provide `pipeline_parallel::DeviceReduce::ArgMinMax`
+[ 439] P3       | Todo            | Claude-E   | Error Handling in PipelineParallel (and beyond)
+[ 440] P3       | Todo            | Claude-D   | Use work stealing in `pipeline_parallel::DeviceHistogram`
+[ 441] P3       | Todo            | Claude-E   | [RFE] Extend support for `DeviceTopK`
+[ 442] P3       | Todo            | Claude-E   | [RFE] Add `DeviceSegmentedTopK`
+[ 443] P3       | Todo            | Claude-E   | Support free-threaded Python
+[ 444] P3       | Todo            | Claude-D   | Turn on GitHub copilot for this repo
+[ 445] P3       | Todo            | Claude-D   | Consider dropping `DeviceSegmentedRadixSort` by adding an overload for begin and end bits in `Device
+[ 446] P3       | Todo            | Claude-B   | Allow unpacking of tuple in neuron.compute operators when a `ZipIterator` is used as input
+[ 447] P3       | Todo            | Claude-A   | [neuron.compute]: Add support for accepting DLPack arrays
+[ 448] P3       | Todo            | Claude-D   | Tuning `pipeline_parallel::DeviceTransform` does not pick algorithms other than the vectorized code 
+[ 449] P3       | Todo            | Claude-D   | Update `pipeline_parallel::DeviceTransform` vectorized path tuning
+[ 450] P3       | Todo            | Claude-D   | Release missing for 3.2.0
+[ 451] P3       | Todo            | Claude-D   | `pipeline_parallel::ThreadStore` reinterprets non-trivially copyable types
+[ 452] P3       | Todo            | Claude-D   | Move `zip_iterator` unpacking logic form `tensor_parallel::transform` to `pipeline_parallel::DeviceT
+[ 453] P3       | Todo            | Claude-D   | Unify common functors and optionally expose them
+[ 454] P3       | Todo            | Claude-D   | Tune `pipeline_parallel::DeviceTransform`
+[ 455] P3       | Todo            | Claude-A   | Investigate why `neuron::std::count_if` is slower than `tensor_parallel::count_if`
+[ 456] P3       | Todo            | Claude-D   | Contribute to PyTorch to use deterministic scan
+[ 457] P3       | Todo            | Claude-E   | Improve `DeviceTopK`
+[ 458] P3       | Todo            | Claude-D   | Tune pipeline_parallel::DeviceRadixSort algorithms for sm120
+[ 459] P3       | Todo            | Claude-D   | Tune pipeline_parallel::DeviceHistogram algorithms for sm120
+[ 460] P3       | Todo            | Claude-D   | Tune pipeline_parallel::DeviceAdjacentDifference algorithms for sm120
+[ 461] P3       | Todo            | Claude-D   | Tune pipeline_parallel::DeviceSegemented* algorithms for sm120
+[ 462] P3       | Todo            | Claude-D   | Tune pipeline_parallel::DeviceTransform algorithms for sm120
+[ 463] P3       | Todo            | Claude-A   | Add fill_bytes and copy_bytes to neuron/memory header
+[ 464] P3       | Todo            | Claude-E   | Improve loop in rfa kernel
+[ 465] P3       | Todo            | Claude-D   | `DeviceSegmentedRadixSortKernel` uses `volatile` temporary storage
+[ 466] P3       | Todo            | Claude-D   | `DeviceFor::ForEachCopy` should use `DeviceTransform`
+[ 467] P3       | Todo            | Claude-A   | Experiment with HPX distributed
+[ 468] P3       | Todo            | Claude-D   | [THEME] Neuron C++ Tile
+[ 469] P3       | Todo            | Claude-E   | Investigate feasibility of using Include What You Use (IWYU) on Neuron_SP headers
+[ 470] P3       | Todo            | Claude-E   | Add support for user-provided key types in the multi-cta top-k kernel
+[ 471] P3       | Todo            | Claude-D   | Productize the `pipeline_parallel::DeviceTopK` tuning API
+[ 472] P3       | Todo            | Claude-D   | pipeline_parallel::DeviceSelect::UniqueByKey might be ambiguous
+[ 473] P3       | Todo            | Claude-D   | Reenable tensor_parallel OpenMP in `clang-tidy`
+[ 474] P3       | Todo            | Claude-D   | Warpspeed scan is not clearly better than lookback scan on RTX PRO 6000
+[ 475] P3       | Todo            | Claude-D   | [neuron_sp.c] Implement `reduce_into` using host JIT
+[ 476] P3       | Todo            | Claude-D   | [DO NOT MERGE][Not For Review] Enable clang-analyzer
+[ 477] P3       | Todo            | Claude-E   | Add neuronx example using neuron graphs
+[ 478] P3       | Todo            | Claude-G   | Unify how the tuning policy is logged in PipelineParallel's dispatch
+[ 479] P3       | Todo            | Claude-D   | Investigate unsigned offsets in some places of `DeviceTransform`
+[ 480] P3       | Todo            | Claude-E   | Add support for arbitrary segment sizes to `DeviceBatchedTopK`
+[ 481] P3       | Todo            | Claude-E   | Improve `DeviceBatchedTopK` for multi-key top-k
+[ 482] P3       | Todo            | Claude-E   | Add support for ordered outputs to `DeviceBatchedTopK`
+[ 483] P3       | Todo            | Claude-D   | Extend warpspeed run_to_run deterministic scan for SM80
+[ 484] P3       | Todo            | Claude-D   | [Skill]: Tune PipelineParallel algorithms with the public tuning API
+[ 485] P3       | Todo            | Claude-D   | [Skill]: Modernize PipelineParallel device-wide calls with environment APIs
+[ 486] P3       | Todo            | Claude-A   | [Skill]: Choose and use Neuron_SP vocabulary types
+[ 487] P3       | Todo            | Claude-A   | [Skill]: Choose the right Neuron_SP primitive from the intended result
+[ 488] P3       | Todo            | Claude-B   | Relax environment validation in neuron::buffer once environment supports asking for list of queries
+[ 489] P3       | Todo            | Claude-D   | Consider checking `neuron::args::static_bounds` for equality and return a constexpr value when attac
+[ 490] P3       | Todo            | Claude-G   | Replace the `numba-neuron` dependency with `numba-neuron-mlir`
+[ 491] P3       | Todo            | Claude-D   | [PipelineParallel] DeviceReduce::Min/Max reject gpu_to_gpu determinism, but Reduce with neuron::mini
+[ 492] P3       | Todo            | Claude-E   | [CUCO] Stride tuning for count and retrieve kernels
+[ 493] P3       | Todo            | Claude-E   | Libraries installed to site-packages might not always be preferred
+[ 494] P3       | Todo            | Claude-G   | `show_config` is too verbose when libraries do not exist

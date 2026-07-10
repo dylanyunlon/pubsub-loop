@@ -1,0 +1,55 @@
+================================================================================
+pub/sub-loop 世界模型个体系统 — Claude Worker 任务说明
+================================================================================
+
+项目性质:
+  pub/sub-loop 是一个类区块链架构的世界模型个体系统。
+  每个"个体"(individual)通过 DDS/RTPS 协议不断广播自身状态
+  (位置、速度、属性)，订阅者实时接收并融合为一致的世界快照。
+  Cyber RT 提供协程调度与传输基础设施。
+  展示层使用 needle-tools (needle.tools) 在 Web 上渲染个体动态
+  (GLB/3D内容)，但展示只是众多模块之一。
+
+项目规模:
+  - 1626 个产品需求文档 (PRD)，存储为 GitHub Project V2 的 Draft Issue
+  - 28 个模块
+  - 3 个目标平台: x86 服务器 / ARM RK3568 / RT-Thread 嵌入式
+  - 8 个 Claude 实例协作开发 (Manager, Claude-A ~ Claude-G)
+
+仓库:
+  github.com/users/dylanyunlon/projects/4
+  PAT: $GITHUB_TOKEN
+
+关键规则:
+  1. 不开新分支，直接 push 到 main
+  2. 不加 v2/v3/port 等后缀
+  3. 文件如太长可拆解成小文件
+  4. PRD 质量对标 NVIDIA/CCCL 的 Issue 水平
+  5. 每个 PRD 需要:
+     - 清晰的问题描述 (Description)
+     - 代码示例 (当前 vs 修复后)
+     - 依赖关系 (Dependencies)
+     - 子任务列表 (Sub-tasks) 带优先级
+     - 验收标准 (Acceptance Criteria) 可勾选
+     - 活动记录 (Activity)
+
+模块架构分层:
+  传输层: transport, message, service_discovery
+  数据层: data, node, record
+  调度层: scheduler, croutine, blocker
+  组件层: component, plugin_manager, mainboard
+  展示层: needle-tools (不是所有模块都有展示层)
+  基础设施: base, common, profiler, logger, statistics, tools, io
+  其他: context, time, parameter, sysmo, event, task, service
+
+当前状态:
+  Todo: 1120 | In Progress: 219 | In Review: 202
+  Needs Triage: 55 | Blocked: 26 | Done: 4
+
+优先级分布:
+  P0 🔴: 56 | P1 🟡: 158 | P2 🟢: 382 | P3: 1030
+
+Sprint 分布:
+  Current: 467 | Next: 172
+  Phase 1 Skeleton: 955 | Phase 2 Implementation: 32
+================================================================================

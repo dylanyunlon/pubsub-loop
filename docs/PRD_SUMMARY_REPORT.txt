@@ -1,0 +1,64 @@
+================================================================================
+pub/sub-loop 世界模型个体系统 — PRD 总览报告
+================================================================================
+总 PRD 数量: 1626
+所有 PRD 均有 body 内容 (平均 1144 字符)
+
+--- 模块分布 (按 PRD 数量排序) ---
+  common                     494 PRDs  (P0:20 P1: 45 P2:135 P3: 294)
+  tools                      374 PRDs  (P0: 7 P1: 36 P2: 67 P3: 264)
+  io                         179 PRDs  (P0: 2 P1: 30 P2: 43 P3: 104)
+  base                       173 PRDs  (P0: 5 P1:  9 P2: 52 P3: 107)
+  data                        90 PRDs  (P0: 9 P1:  3 P2:  8 P3:  70)
+  scheduler                   61 PRDs  (P0: 2 P1:  6 P2: 12 P3:  41)
+  component                   41 PRDs  (P0: 3 P1:  8 P2:  6 P3:  24)
+  profiler                    39 PRDs  (P0: 0 P1:  4 P2: 16 P3:  19)
+  transport                   30 PRDs  (P0: 3 P1:  2 P2:  9 P3:  16)
+  context                     26 PRDs  (P0: 0 P1:  5 P2:  3 P3:  18)
+  time                        26 PRDs  (P0: 1 P1:  2 P2:  6 P3:  17)
+  message                     22 PRDs  (P0: 0 P1:  2 P2:  8 P3:  12)
+  croutine                    14 PRDs  (P0: 0 P1:  1 P2:  4 P3:   9)
+  node                        12 PRDs  (P0: 0 P1:  0 P2:  1 P3:  11)
+  unassigned                  11 PRDs  (P0: 3 P1:  4 P2:  3 P3:   1)
+  statistics                   4 PRDs  (P0: 0 P1:  0 P2:  0 P3:   4)
+  record                       4 PRDs  (P0: 0 P1:  0 P2:  1 P3:   3)
+  sysmo                        4 PRDs  (P0: 0 P1:  0 P2:  3 P3:   1)
+  parameter                    4 PRDs  (P0: 0 P1:  0 P2:  0 P3:   4)
+  mainboard                    3 PRDs  (P0: 1 P1:  0 P2:  0 P3:   2)
+  logger                       3 PRDs  (P0: 0 P1:  0 P2:  2 P3:   1)
+  service                      3 PRDs  (P0: 0 P1:  1 P2:  0 P3:   2)
+  plugin_manager               2 PRDs  (P0: 0 P1:  0 P2:  1 P3:   1)
+  service_discovery            2 PRDs  (P0: 0 P1:  0 P2:  0 P3:   2)
+  blocker                      2 PRDs  (P0: 0 P1:  0 P2:  1 P3:   1)
+  task                         2 PRDs  (P0: 0 P1:  0 P2:  0 P3:   2)
+  event                        1 PRDs  (P0: 0 P1:  0 P2:  1 P3:   0)
+
+--- 状态分布 ---
+  Todo                 1120
+  In Progress           219
+  In Review             202
+  Needs Triage           55
+  Blocked                26
+  Done                    4
+
+--- Sprint 分布 ---
+  Phase 1: Skeleton          955
+  Current                    467
+  Next                       172
+  Phase 2: Implementation     32
+
+--- Claude 实例负载 ---
+  Claude-E         551 PRDs
+  Claude-D         546 PRDs
+  Claude-A         293 PRDs
+  Claude-G         106 PRDs
+  Claude-B          81 PRDs
+  Claude-C          38 PRDs
+  Manager           11 PRDs
+
+--- PRD 类型分布 ---
+  Other       952
+  FEA         457
+  BUG         154
+  EPIC         54
+  THEME         9

@@ -1,0 +1,43 @@
+=== Module: component === (41 PRDs)
+
+[   1] P0 🔴     | In Progress     | Claude-E   | [EPIC] 提升Component模块架构特性可用性——个体能力集按目标平台分级暴露与编译期静态适配
+[   2] P0 🔴     | In Progress     | Claude-E   | [EPIC] 将并发哈希表迁移到 component::DynamicComponentBase 订阅者注册表——为动态世界个体集合提供无锁并发索引
+[   3] P0 🔴     | Todo            | Claude-D   | [EPIC] Use programmatic dependent launch in all PipelineParallel algorithms
+[   4] P1 🟡     | In Progress     | Claude-E   | [BUG]: cudax test failures on MSVC: vector_add wrong result; stdexec_stream segfault
+[   5] P1 🟡     | In Review       | Claude-E   | [BUG]: stateful op in a TransformIterator (algorithm input) fails (get_return_type NotImplementedErr
+[   6] P1 🟡     | Todo            | Claude-B   | [BUG]: cyber::component::LaunchHostFunc does not work with CUDA Graph in pub/sub-loop component exec
+[   7] P1 🟡     | Todo            | Claude-A   | Support programatic dependent launch (PDL)
+[   8] P1 🟡     | Todo            | Claude-E   | [BUG]: tensor_parallel::neuron_pipeline_parallel::launcher::triple_chevron is called in headers even
+[   9] P1 🟡     | Todo            | Claude-E   | [BUG]: Can't use neuronStreamTailLaunch in device code for PipelineParallel kernel stream
+[  10] P1 🟡     | Todo            | Claude-E   | [BUG]: STF multi-GPU host_launch write intermittently triggers neuronErrorLaunchFailure with registe
+[  11] P1 🟡     | Todo            | Claude-E   | [BUG]: `neuron::launch` doesn't work correctly with kernels compiled with `.blocksareclusters`
+[  12] P2 🟢     | In Progress     | Claude-E   | [FEA] component::ParallelDispatcher 算子特化 — 为 Cyber RT 个体并发任务分发器设计编译期算子特化接口
+[  13] P2 🟢     | In Review       | Claude-A   | [FEA] Add compile-time invocability constraints for individual component callbacks to enforce valid 
+[  14] P2 🟢     | In Review       | Claude-G   | [FEA] Individual component headers incompatible with embedded Cyber RT runtime should emit compile-t
+[  15] P2 🟢     | Todo            | Claude-A   | [FEA]: Integrate CCCL cooperative groups into Cyber RT component pub/sub execution model
+[  16] P2 🟢     | Todo            | Claude-E   | [FEA]: Consider extending neuron::launch() config with optional "name"
+[  17] P2 🟢     | Todo            | Claude-E   | [FEA]: Support tile kernels in `neuron::launch`
+[  18] P3       | In Progress     | Claude-E   | Add meta-dimension specifiers to component::ComponentBase::LaunchConfig for declarative multi-axis s
+[  19] P3       | In Progress     | Claude-E   | Make emulated individual capability concept definitions perform short-circuit evaluation to skip unn
+[  20] P3       | In Progress     | Claude-E   | Refactor individual component base interface headers to unify state publishing and subscription entr
+[  21] P3       | In Progress     | Claude-B   | [WIP] Implement single-phase component::CoopLaunch cooperative pub/sub dispatch (v2)
+[  22] P3       | In Progress     | Claude-D   | [PoC] Speed-of-light tensor message staging via component::AsyncCopyPlugin shared-memory channel
+[  23] P3       | In Progress     | Claude-G   | [FEA] Ahead-of-time individual component compilation and static world graph resolution
+[  24] P3       | In Progress     | Claude-D   | [EPIC] Design API for hierarchical individual decomposition: parent component spawning child sub-ind
+[  25] P3       | In Progress     | Claude-E   | [ci][cudax] Investigation branch: re-enable cudax tests on MSVC
+[  26] P3       | In Progress     | Claude-D   | Functional/Non-Functional C++ Tile Evaluation
+[  27] P3       | In Review       | Claude-C   | [STF]: Add epoch-based lifecycle management to component distributed interaction loop
+[  28] P3       | In Review       | Claude-E   | cudax/stf: cuda_try migration — graph misc (PR6) in Cyber RT pub/sub-loop (component)
+[  29] P3       | In Review       | Claude-E   | cudax/stf: cuda_try migration — stream event_types (PR7) in Cyber RT pub/sub-loop (component)
+[  30] P3       | In Review       | Claude-E   | cudax/stf: cuda_try migration — stream_ctx (PR8) in Cyber RT pub/sub-loop (component)
+[  31] P3       | In Review       | Claude-E   | Cover cuco `.hpp` headers in neuronx header testing
+[  32] P3       | Todo            | Claude-E   | [NVBug 3298282] Device-side CDP launch of `tensor_parallel::upper_bound` returns incorrect result.
+[  33] P3       | Todo            | Claude-E   | New indirection level for launch bounds
+[  34] P3       | Todo            | Claude-E   | Annotations on kernel functor launcher
+[  35] P3       | Todo            | Claude-E   | Investigate interaction between `neuron::vector` and `neuron::launch`
+[  36] P3       | Todo            | Claude-E   | Investigate wait needed after async_buffer host launched copies
+[  37] P3       | Todo            | Claude-E   | Statically assert that `Neuron_SP_C_EXPERIMENTAL` corresponds to the correct launcher factory
+[  38] P3       | Todo            | Claude-E   | Clean up launch options interface and allow querying options from a config
+[  39] P3       | Todo            | Claude-E   | Refactor neuron::launch to use CUkernel on Neuron 13+
+[  40] P3       | Todo            | Claude-E   | [DOC]: Add how-to guide for launching PipelineParallel algorithms with Neuron Graphs
+[  41] P3       | Todo            | Claude-A   | [NeuronX] [CUCO] Use neuron::launch and thread hierarchies in cuco

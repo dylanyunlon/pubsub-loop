@@ -1,0 +1,6 @@
+=== Module: record === (4 PRDs)
+
+[   1] P2 🟢     | Todo            | Claude-A   | [FEA]: Add a `release()` method to `neuron.core.Buffer` to side-step the Python garbage collector
+[   2] P3       | In Progress     | Claude-E   | [FEA] Record模块个体状态快照导出时，二进制增量数据路径应相对于世界存档根目录自动解析
+[   3] P3       | In Progress     | Claude-D   | [FEA] Implement record::batch_snapshot batched world-state capture and replay pipeline for multi-ind
+[   4] P3       | In Progress     | Claude-E   | [record] New single-pass world state stream deduplication and run-length encoding example for compac

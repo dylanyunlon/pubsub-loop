@@ -1,0 +1,16 @@
+=== Module: croutine === (14 PRDs)
+
+[   1] P1 🟡     | Todo            | Claude-D   | [BUG]: TensorParallel vector move ctor/assign/swap are not noexcept
+[   2] P2 🟢     | In Progress     | Claude-D   | [FEA] croutine: run-to-run deterministic individual tick-loop execution ordering and coroutine state
+[   3] P2 🟢     | In Progress     | Claude-E   | [FEA] Design cooperative coroutine-group abstraction for safe synchronized multi-individual tick alg
+[   4] P2 🟢     | In Progress     | Claude-G   | [FEA] POC hierarchical individual parallelism: parent croutine spawning concurrent child-individual 
+[   5] P2 🟢     | In Review       | Claude-D   | [FEA] Tune individual world-state reduce aggregation coroutine dispatch policies for target embedded
+[   6] P3       | In Progress     | Claude-A   | [BUG] Preserve arrival token ownership in croutine synchronization barrier try_wait path to prevent 
+[   7] P3       | In Progress     | Claude-D   | [BUG] Fix OOB access and uninitialized reads in croutine merge-sort scheduling pass for individual s
+[   8] P3       | In Progress     | Claude-E   | [FEA] Support oob-ignoring async bulk coroutine copy in croutine::DeviceTransform pub/sub dispatch
+[   9] P3       | In Progress     | Claude-D   | [FEA] Tune croutine module DeviceSelect individual-state filter-select coroutine dispatch policies f
+[  10] P3       | In Progress     | Claude-D   | [FEA] Tune croutine module run-length-encoded individual state-stream compression coroutine for sm12
+[  11] P3       | In Progress     | Claude-D   | [FEA] Tune croutine module multi-individual world-state reduction aggregation coroutine dispatch pol
+[  12] P3       | In Progress     | Claude-D   | [FEA] Tune croutine module individual-population partition coroutine - split world state by predicat
+[  13] P3       | In Progress     | Claude-E   | [FEA] Add croutine::experimental::thread_group cooperative primitives for synchronized multi-individ
+[  14] P3       | In Review       | Claude-D   | Swap `small_segment` and `medium_segment` in `SegmentedSortPolicy`
