@@ -1,0 +1,43 @@
+## pub/sub-loop PRD 审核
+
+---
+
+**Q1 架构定位** ✅
+
+`world::io` 模块归属清晰，命名空间规范，与 pub/sub-loop 上下文衔接合理。高吞吐 I/O 层定位准确，100K+ 个体规模说明具体。
+
+---
+
+**Q2 问题陈述** ❌
+
+标题声称 "GPU scan uses wrong aggregation type"，但正文通篇未出现：当前错误的聚合类型是什么、期望类型是什么、错误行为的复现路径、以及任何 GPU/scan 相关的代码引用。BUG 的核心事实缺失，描述停留在模块背景介绍层面，与标题脱节严重。
+
+---
+
+**Q3 个体交互** ✅
+
+三类 individual 的角色、交互方式均已列出，pub/sub 拓扑图（StateProcessor → channel → Monitor）结构清晰，CRoutine 调度路径可追溯。
+
+---
+
+**Q4 API 设计** ❌
+
+两处问题。第一，`process_tick` 返回 `StateView`，但 `w.publish()` 直接接收该返回值发布为 `world::StateUpdate`，类型未对齐，缺少转换说明或类型别名声明。第二，BUG 标题指向 GPU scan 聚合类型错误，但 API Surface 中没有任何与 scan / reduction / aggregation 相关的接口或参数，修复目标与暴露接口之间没有关联。
+
+---
+
+**Q5 展示层影响** ❌
+
+提到 "影响 needle-tools GLB 场景的实时刷新率"，但未给出：刷新率基线是多少、当前因 BUG 下降幅度、修复后的预期恢复目标。Acceptance Criteria 中"性能不低于基线"未绑定任何可测量数值，展示层影响无法验收。
+
+---
+
+**总结**
+
+| 维度 | 结论 | 核心缺口 |
+|---|---|---|
+| Q1 架构定位 | ✅ | — |
+| Q2 问题陈述 | ❌ | GPU scan 错误聚合类型的具体事实缺失 |
+| Q3 个体交互 | ✅ | — |
+| Q4 API 设计 | ❌ | StateView/StateUpdate 类型不对齐；scan 修复路径不可见 |
+| Q5 展示层影响 | ❌ | 刷新率基线与验收指标均未量化 |

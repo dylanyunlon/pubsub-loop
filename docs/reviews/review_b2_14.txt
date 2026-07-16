@@ -1,0 +1,35 @@
+逐条审核如下：
+
+---
+
+**Q1 架构定位** ❌
+
+标题指向 `pipeline_parallel::DeviceReduce::Sum` 的不确定性 bug，但 Description 定位为 `world::tools` 模块缺陷修复，二者不匹配。`pipeline_parallel` 属于并行计算层，`world::tools` 属于工具链层，模块归属含糊。`模块: ?` 未填写，进一步证明定位缺失。
+
+---
+
+**Q2 问题陈述** ❌
+
+bug 的核心是 `DeviceReduce::Sum(AA[BB])` 与 `DeviceReduce::Sum([BB])` 结果不一致，但 PRD 正文完全没有复现路径、没有最小可复现示例、没有不确定性的根因假设（浮点累加顺序？内存对齐？）。"世界模型工具链……确保构建和验证"这段描述是通用背景，对定位 bug 零贡献。
+
+---
+
+**Q3 个体交互** ❌
+
+交互表格中的三个 Individual（StateProcessorIndividual / SchedulerIndividual / MonitorIndividual）与 `DeviceReduce::Sum` 不确定性 bug 没有建立任何因果关联。未说明 sub-range 规约错误如何影响个体状态更新的正确性，channel 图示也是通用模板，未体现 bug 场景下的异常路径。
+
+---
+
+**Q4 API 设计** ❌
+
+给出的 `world::tools::Processor` API 是一套全新的 Processor 接口，与标题中的 `pipeline_parallel::DeviceReduce` 完全不相关。修复一个现有函数的确定性问题，不应引入新类；若需要新接口包装修复后的行为，也需说明与原始 `DeviceReduce::Sum` 的关系及 sub-range 语义的处理方式。
+
+---
+
+**Q5 展示层影响** ❌
+
+Acceptance Criteria 中"个体动态输出场景验证通过"和"GLB 动态输出"未说明 `DeviceReduce` 不确定性如何传播到展示层（渲染帧差异？状态快照偏差？）。缺少针对 sub-range vs extracted-range 两种调用路径的回归测试用例，ASAN/TSAN 条目与不确定性（non-determinism）问题类型不匹配——该 bug 更需要的是多次运行结果一致性检查，而非内存安全检查。
+
+---
+
+**总结**：5 条全部不通过。根本问题是 PRD 套用了通用 pub/sub-loop 模板，但既没有锚定真实 bug（`DeviceReduce` sub-range 不确定性），也没有裁剪掉与该 bug 无关的架构描述和 API 设计。建议先明确 `pipeline_parallel` 模块归属，写出最小复现用例，再决定是否需要 `world::tools` 层的封装。

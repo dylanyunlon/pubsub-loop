@@ -1,0 +1,47 @@
+## PRD 审核报告：BUG — AssertionError: LDL instruction found in SASS
+
+---
+
+Q1 架构定位 ❌
+
+问题：标题定义为 BUG 修复，但 PRD 正文将范围扩展至"构建系统、代码生成、测试框架、CI/CD 基础设施"的整体工具链保障，远超单一 LDL/SASS 指令错误的修复边界。世界模型定位段落没有解释 LDL 指令为何出现、属于哪个编译阶段（PTX→SASS 的 cubin 生成？NVCC 后端？第三方汇编器？），读者无法判断缺陷根因在哪一层。架构定位应收窄至"GPU 代码生成后端 / SASS 指令合法性验证"这一具体子系统。
+
+---
+
+Q2 问题陈述 ❌
+
+问题：原始错误 `AssertionError: LDL instruction found in SASS` 的触发条件、复现步骤、受影响平台（x86 CUDA? ARM CUDA? 嵌入式不支持 GPU?）均未说明。"some of the tests"的范围模糊——是哪些 test target？是否与特定 CUDA toolkit 版本或 compute capability 绑定？依赖列表中出现"pub/sub 通道基础设施"和"个体状态类型系统"，与 SASS 指令错误的直接关联未建立，疑似将两个不相关问题拼合。问题陈述需包含：最小复现路径、受影响 test case 列表、根因假说（如 LDL 指令在目标 SM 架构不合法）。
+
+---
+
+Q3 个体交互 ✅（有条件通过）
+
+优点：三类个体（StateProcessorIndividual / SchedulerIndividual / MonitorIndividual）的角色与交互方式以表格形式清晰呈现，pub/sub 拓扑图直观。
+
+条件：当前表格与 BUG 修复本身的关联不明确——LDL 指令错误是否会导致 StateProcessor 数据错误或 Monitor 诊断失效？若无，此节内容属于背景知识堆砌，建议补充"LDL 错误对各个体的实际影响"一列，或单独放入背景附录。
+
+---
+
+Q4 API 设计 ❌
+
+问题：所提供的 `world::tools::Processor` API 是全新设计，而非针对现有缺陷的修复方案。一个 BUG ticket 不应引入新的 `Config` 结构体和 `Processor` 类——这是 Feature 级变更。`process_tick` 返回 `StateView`，但与 LDL/SASS 断言失败的修复路径完全脱节。`from_json` 的错误处理语义未定义（抛异常？返回默认值？）。`enable_simd=true` 与 `alignment=64` 的默认值缺乏来源说明（基准测试？硬件约束？）。BUG 修复的 API 节应呈现：受影响接口的现有签名、最小化的修复 diff 方向、回归测试桩。
+
+---
+
+Q5 展示层影响 ❌
+
+问题：PRD 完全缺失展示层（presentation layer）分析。如果该系统涉及从 GLB 动态输出到前端渲染（文中提及"从源码到 GLB 动态输出"），SASS 指令错误是否影响 shader 编译或运行时渲染结果？个体状态的可视化诊断通道（MonitorIndividual）在错误发生时的降级行为是什么？Acceptance Criteria 中"个体动态输出场景验证通过"未映射到任何具体的展示层断言或截图基准。此节需补充：UI/渲染层的影响面评估、降级策略、可观测性指标。
+
+---
+
+总结
+
+| 维度 | 结论 | 核心缺口 |
+|---|---|---|
+| Q1 架构定位 | ❌ | 范围失控，根因层未定位 |
+| Q2 问题陈述 | ❌ | 复现步骤缺失，依赖关联不成立 |
+| Q3 个体交互 | ✅ | 需补充错误影响列 |
+| Q4 API 设计 | ❌ | BUG ticket 混入 Feature 设计 |
+| Q5 展示层影响 | ❌ | 整节缺失 |
+
+建议将本 ticket 拆分为两个独立条目：一个纯 BUG 修复（LDL/SASS 根因定位+最小补丁），一个 Feature（Processor API 设计+pub/sub 集成），分别走各自的评审流程。

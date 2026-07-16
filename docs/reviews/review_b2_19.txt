@@ -1,0 +1,38 @@
+我将逐条审核这份 PRD，不使用格式符号，纯文本输出。
+
+---
+
+**Q1 架构定位**
+❌
+
+标题是一个具体的 bug fix（atomics fully qualify），但正文把它包装成了一个模块级别的基础设施需求，两者层级严重错位。"world::base 模块缺陷修复"这个定位本身没有问题，但随即引入 pub/sub-loop、个体状态零拷贝传输、GLB 渲染等一连串上下文，把一个函数调用规范问题升格为了架构叙述。这是典型的模板填充幻觉——用框架语言包裹了一个不需要框架的问题。世界模型定位段落和 pub/sub-loop 上下文段落的内容，与 bug 本身的关联极为薄弱，属于噪音。
+
+**Q2 问题陈述**
+❌
+
+全文没有一句话解释"atomics should always fully qualify when calling internal functions"究竟是什么问题，为什么是 bug，当前代码哪里错了，不完全限定会导致什么后果（ADL 歧义？链接错误？跨命名空间污染？），以及在哪些具体调用点复现。Description 段落只是把标题复述了一遍，然后立刻跳到了架构叙事。这是最严重的缺陷——这份文档的核心问题陈述是空洞的。读者无法从这里理解需要修什么。
+
+**Q3 个体交互**
+❌
+
+个体交互模型表格中列出了 StateProcessorIndividual、SchedulerIndividual、MonitorIndividual 三个个体，但它们与 atomics fully qualify 这个 bug 的关系完全没有被建立。SchedulerIndividual 的 tick 调度和 CRoutine、MonitorIndividual 的诊断通道，与原子操作完全限定调用之间的因果链是缺失的。这里像是把一个通用的个体交互模板粘贴进来了，没有针对本 bug 做任何裁剪或论证。pub/sub 流向图（StateProcessor → channel → Monitor）同理，是模板幻觉，不是针对此 bug 的分析。
+
+**Q4 API 设计**
+❌
+
+给出的 API（Config、Processor、process_tick、get_stats）和 example 代码，与 bug 标题完全脱节。"atomics should always fully qualify"是一个关于调用规范的修复，不需要新增 Processor 类或 Config 结构体。这份 API 是凭空生成的，没有说明它是新增接口还是现有接口的修改，也没有展示哪里的 atomic 调用是不完全限定的、修复后应该是什么样子。example 里的 world::pubsub::create_writer 和 world::state::collect_current 均未在 Dependencies 或其他任何地方声明来源，存在幻觉引用风险。整个 API Surface 段落应当被替换为：当前错误调用示例 vs 修复后正确调用示例的对比。
+
+**Q5 展示层影响**
+❌
+
+"防止 GLB 渲染中出现状态撕裂"这句话是整份文档里最典型的幻觉陈述。一个 atomics 的命名空间限定问题，在修复前如果代码能通过编译和链接，其运行时行为与完全限定版本是等价的（这取决于具体的 ADL 规则和命名空间布局）。文档没有论证不完全限定究竟如何在运行时导致状态撕裂，也没有说明是否真的复现过 GLB 渲染错误。这是用展示层的戏剧性后果来为一个代码规范 fix 撑场面的典型模板膨胀，缺乏技术论据支撑。Acceptance Criteria 里"个体动态输出场景验证通过"同理，是空泛的验收条件，无法执行。
+
+---
+
+**总体判定**
+
+不通过。
+
+这份文档有一个真实的、可能是合理的 bug fix 需求（atomics 调用的命名空间限定问题），但它被一套 pub/sub-loop PRD 模板完全覆盖了，导致五个维度全部出现不同程度的模板幻觉或信息缺失。最核心的问题是：没有人能从这份文档理解这个 bug 的技术本质。
+
+建议的修复方向：删除所有与 atomics fully qualify 无直接因果关系的架构叙述；在 Description 里贴出具体的错误调用代码和预期的修复代码；说明不完全限定在当前命名空间布局下的具体危害（编译期还是运行期，ADL 解析还是其他）；Acceptance Criteria 改为可执行的验收条件，例如"所有 world::base 内部 atomic 调用均使用 ::std::atomic 或完整路径，通过 clang-tidy 检查"；如果确实有展示层影响，需要提供能复现状态撕裂的最小用例。

@@ -1,0 +1,47 @@
+纯文本审核，逐条判定：
+
+---
+
+Q1 架构定位 ❌
+
+问题：标题声明的是一个具体的编译链接 BUG（c.parallel 单测在 THRUST_DEVICE_SYSTEM=Neuron 环境下链接 c2h 但编译时缺少 Neuron 编译器），但正文的"世界模型定位"把它包装成了 world::tools 模块的泛化缺陷修复，两者严重错位。
+
+一个 BUG ticket 的架构定位应当直接描述：受影响的构建路径、错误的根因假设（链接依赖与编译器配置不一致）、以及受影响的目标平台。现在的"pub/sub-loop 上下文"和"个体输出动态关联"与该 BUG 完全无关，是模板套用的噪声，淹没了真实的定位信息。
+
+---
+
+Q2 问题陈述 ❌
+
+问题：正文没有一句话回答"BUG 的复现条件、失败表现、预期行为"这三件事。
+
+缺失的核心信息包括：触发条件（如何设置 THRUST_DEVICE_SYSTEM=Neuron）、具体报错（链接器错误信息、缺少哪个符号/库）、为什么编译阶段没有检测到编译器缺失、最小复现步骤。
+
+现有的"Dependencies"列出了 pub/sub 通道基础设施和个体状态类型系统，与该链接 BUG 的实际依赖（CUDA/Thrust 构建系统、c2h 库、Neuron 编译器 toolchain）毫不相关。问题陈述等于零。
+
+---
+
+Q3 个体交互 ❌
+
+问题：个体交互模型表格（StateProcessorIndividual / SchedulerIndividual / MonitorIndividual）以及 pub/sub 拓扑图对于一个构建系统 BUG 毫无意义。
+
+这个 BUG 的"交互"只有一个层面：CI 构建脚本或 CMake 配置在选择 THRUST_DEVICE_SYSTEM 后，如何决定链接哪些库、如何检测编译器可用性。用运行时个体模型来描述一个编译期配置错误，是范畴错误，不是审核可以修补的小瑕疵，需要整节删除重写。
+
+---
+
+Q4 API 设计 ❌
+
+问题：给出了 world::tools::Processor 和 Config 的 C++ 接口，但这与 BUG 完全无关。BUG 是关于 CMake/build 系统在 Neuron 后端下的链接配置，不涉及任何新 API 设计。
+
+如果这是 BUG ticket，API Surface 节应当不存在，或者替换为：受影响的 CMakeLists.txt 目标、错误的 target_link_libraries 配置、以及修复方案的 build system 接口变更（如新增 HAVE_NEURON_COMPILER guard）。现有 API 设计是从另一个 feature ticket 误贴过来的内容。
+
+---
+
+Q5 展示层影响 ❌（节缺失 + 现有内容替代不足）
+
+问题：PRD 没有展示层影响这一节，但更根本的问题是：现有的 Acceptance Criteria 没有一条针对该 BUG 的验收场景。
+
+"通过 ASAN/TSAN 内存安全检查"和"性能不低于基线"对一个链接配置 BUG 的验收毫无意义。正确的 AC 应当是：在未安装 Neuron 编译器的环境下，cmake --build 应报告明确的配置错误而非链接期失败；在安装 Neuron 编译器的环境下，c.parallel 单测应成功链接并执行。展示层（CI 报告、构建日志可读性）的影响完全未被覆盖。
+
+---
+
+总结：5 条全部 ❌。根本问题是这份 PRD 是将一个具体的构建系统 BUG ticket 强行套入了一个 feature/世界模型 PRD 模板，导致标题与正文的每一个维度都不匹配。建议：清空正文，以"复现步骤 → 实际行为 → 预期行为 → 根因假设 → 修复方案 → 验收条件"六段式重写，删除所有个体交互、API Surface、pub/sub 拓扑内容。
