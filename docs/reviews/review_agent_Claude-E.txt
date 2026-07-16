@@ -1,0 +1,23 @@
+Q1 架构定位 ✅
+
+模块归属 data 明确，pub/sub 回调写路径到 GPU 内存的链路描述清晰（/world/<id>/state → ChannelBuffer<T>::write → cudaMemcpyAsync）。ARM RK3568/RT-Thread 无 CUDA 路径也覆盖到。helper 作为"唯一转换入口"的定位合理，不越权进入 transport 或 monitor 层。无模板化/幻觉迹象。
+
+Q2 问题陈述 ✅
+
+四处代码片段与三类缺陷分类（null/alignment/bounds）形成一一对应，非泛泛而谈。两个 confirmed bug（对齐异常×1、越界写×1）有具体缺陷类别支撑，非主观声称。≥7 call sites、≥120 LOC、<40% 测试覆盖率作为量化依据明确。CUDA illegal-memory-access 延迟曝光（下一次 cudaStreamSynchronize）的诊断难点描述属于真实 CUDA 行为，非幻觉。问题陈述质量高。
+
+Q3 个体交互 ✅
+
+明确交代了 individual subscriber callback 的完整路径：DDS/RTPS 发布 → subscriber node callback → ChannelBuffer<T>::write → device buffer → DeviceReduce 输出 → /world/__record/stat → monitor::WorldStateMonitor。说明了错误传播链（corrupted TensorBuffer slice → wrong histogram data）且指出 pub/sub 层不可见。个体交互影响描述到位，不模糊。
+
+Q4 API 设计 ❌
+
+当前 API Surface 部分仅呈现了 ChannelBuffer 的现有接口，正文在 5000 字截止处被截断，proposed helper（data::device_ptr_cast<T>）的签名、模板约束、错误处理契约（抛异常 vs 返回 nullptr）、constexpr/noexcept 声明、CUDA 与 non-CUDA 编译路径的条件编译方案均未出现。这是 FEA PRD 的核心内容缺失，不能以"截断"为由免责——5000 字内应优先呈现新 API 声明而非重复现有代码。
+
+Q5 展示层影响 ❌
+
+正文（可见范围内）未涉及 monitor::WorldStateMonitor 或其他展示层订阅者在此变更后的行为变化。提及"delivering wrong histogram data"是负面 case 描述，并非对展示层影响的正面分析。需要说明：helper 引入后 /world/__record/stat 数据正确性如何被保证、展示层是否需要联动变更、错误是否需要向上透出到 UI/监控告警层。
+
+---
+
+总结：Q1/Q2/Q3 扎实，问题链路清晰、有具体代码和量化数据支撑。Q4 是硬伤（核心设计缺位），Q5 展示层分析缺席。建议补齐 device_ptr_cast<T> 完整 API 声明及展示层影响章节后重审。

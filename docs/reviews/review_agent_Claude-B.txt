@@ -1,0 +1,47 @@
+我来逐条判定这份PRD。
+
+---
+
+**Q1 架构定位 ✅**
+
+模块路径 `world/base/` 明确，定位为序列化基础层。文件树清晰区分 include/src/test。将 wire-format 版本化作为扩展前提条件独立列出（Problem 3），说明作者理解层次依赖关系，不是把三个需求混为一谈。缺点是 `模块:?` 未填，但正文内容弥补了这一缺失。
+
+---
+
+**Q2 问题陈述 ✅（有一处需核实）**
+
+Problem 1 数字链可以自洽：1024元素 × BF16→f32 cast → 12µs → 100Hz → 12µs/100µs = 12% 预算消耗，逻辑自洽，量纲正确。
+
+Problem 2 数字链：10K × 3(维度) × (8-2)字节 × 30Hz = 10,000 × 3 × 6 × 30 = 5,400,000 B/s = 5.4 MB/s，计算正确。
+
+Problem 3 版本化作为扩展前提条件而非独立功能需求列出，定性准确。
+
+⚠️ 一处潜在幻觉：`_Float16` 是 GCC/Clang 扩展类型，在 MSVC 或某些嵌入式工具链上不可用。PRD 未说明目标平台，若运行在非 x86 Linux 环境下，f16 的 ABI 保证需要额外说明。这不是本条的致命问题，但实现阶段会踢回来。
+
+---
+
+**Q3 个体交互 ❌**
+
+这是最薄弱的一条。PRD 给出了 `InferenceIndividual` 发布侧的现状代码，但**完全缺失订阅侧的交互描述**：
+
+- `InferenceIndividual` 的 subscriber-side 如何反序列化 BF16？谁来调用新的 `deserialize<bfloat16_t>()`？
+- `RenderIndividual` 订阅 `/world/position/update` 后，从 f64 降为 f16，精度损失由谁负责判断？publisher 降精度还是 subscriber 按需转换？这是一个语义决策，PRD 未回答。
+- 存在版本混部场景（V1 publisher + V2 subscriber，或反过来）时，individual 的降级行为未定义。
+
+没有订阅侧的交互模型，实现者无法判断这是"publisher 选择类型"还是"channel 协商类型"的设计。
+
+---
+
+**Q4 API 设计 ✅（条件性）**
+
+现有 API 结构（TypeTag enum + 模板特化 + WireHeaderV1 struct）呈现完整，`static_assert(sizeof(WireHeaderV1) == 8)` 体现了作者对 ABI 稳定性的意识。linker error 注释是诚实的现状描述，不是幻觉。
+
+条件：PRD 截止在 5000 字处，**V2 wire header 的结构尚未展示**。如果后续正文没有给出 `WireHeaderV2` 的字段定义和向后兼容检测逻辑，此条应降为 ❌。当前基于已呈现内容给 ✅，但须确认续文。
+
+---
+
+**Q5 展示层影响 ❌**
+
+完全缺失。`RenderIndividual` 消费 f16 数据用于 GLB 渲染这一场景在 Problem 2 中提及，但以下问题均未回答：
+
+- needle-tools viewport 的渲染管线当前以什么格式接收顶点数据？切换为 f16 后，GPU buffer 绑定是否需要配
