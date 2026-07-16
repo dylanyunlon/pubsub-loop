@@ -1,0 +1,139 @@
+## PRD 审核报告：[BUG] neuron::std::allocator_traits 编译失败
+
+---
+
+### Q1 架构定位 ❌
+
+**判定依据：** 模块字段填写为 `?`，定位描述停留在"消息层缺陷修复"的笼统表述，未明确该 Bug 属于 L1（世界模型数据层）还是横切 L1/L2 的基础设施问题。
+
+**具体问题：**
+- `world::message` 是 L1 的状态序列化层，但 `allocator_traits` 编译失败通常根因在 C++ 标准库兼容性（clang + libc++ 的模板偏特化），这是**编译工具链/类型系统**问题，不是业务架构问题，两者混淆
+- 模块字段 `?` 在 P1 工单中不可接受
+
+**修改建议：**
+```
+模块: world::message / L1-core
+根因定位: C++ 工具链兼容性 — neuron::std::allocator_traits 
+          对 libc++ 的模板偏特化缺失或类型萃取路径错误
+影响层级: L1（状态类型系统）→ 间接阻塞 L2 pub/sub 通道初始化
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定依据：** 正文把 Bug 描述与功能需求 PRD 的写法混用，缺少复现 Bug 的关键要素。
+
+**具体问题：**
+
+- 没有**最小复现用例（MRE）**：clang 版本、libc++ 版本、编译命令、完整错误日志均缺失
+- "缺陷修复目标"一句话带过，后文却大篇幅写 API 设计和性能基准——这是功能需求的内容，不是 Bug Report 应有的重心
+- 验收标准中"性能不低于基线"对一个编译期 Bug Fix 是无意义的准入条件
+
+**修改建议：**
+
+在 Description 顶部增加：
+```markdown
+### 复现环境
+- Compiler: clang 17.0.x
+- STL: libc++ 17 (LLVM)
+- OS: Linux x86_64 / macOS arm64
+- 构建命令: cmake -DCMAKE_CXX_COMPILER=clang++ ...
+
+### 错误日志（节选）
+error: implicit instantiation of undefined template 
+  'neuron::std::allocator_traits<world::StateBuffer>'
+note: template is declared here: ...
+
+### 根因假设
+neuron::std::allocator_traits 仅对 libstdc++ 做了偏特化，
+libc++ 的 std::allocator 类型萃取路径不同导致实例化失败。
+```
+
+移除或降权"性能不低于基线"至 P2 后续工单。
+
+---
+
+### Q3 个体交互 ✅（条件通过）
+
+**判定依据：** 个体交互模型表格和 pub/sub 数据流图结构清晰，三类个体角色（StateProcessor / Scheduler / Monitor）分工明确。
+
+**尚存瑕疵（需小幅修正）：**
+- `SchedulerIndividual` 的 `CRoutine` 交互方式与本 Bug 无直接关联，表格中应注明"本次 Fix 不涉及"避免范围蔓延
+- 数据流图只有单向箭头，Monitor 的诊断回路未闭合——建议补充：
+
+```
+StateProcessor ──pub──> channel://world/message/update ──sub──> Monitor
+                                                                    │
+                                               ◄──diag channel──────┘
+```
+
+---
+
+### Q4 API 设计 ❌
+
+**判定依据：** 对于一个编译期 Bug Fix，当前 API Surface 引入了全新的 `Processor` 类和 `Config` 结构体，这**超出了 Bug Fix 的范畴**，实质是功能扩展。
+
+**具体问题：**
+
+- `Config::enable_simd` / `Config::alignment=64` 是优化特性，不是 Bug Fix 所需
+- `Processor::get_stats()` 返回 `PerformanceStats`——性能监控不属于编译错误修复
+- 真正需要在 API 层呈现的是：修复后 `allocator_traits` 的特化路径，以及对 `standard_layout` 约束的明确声明
+
+**修改建议：** 将 API Surface 拆成两部分：
+
+```cpp
+// === Fix Scope（本工单）===
+namespace neuron::std {
+  // 补充 libc++ 路径下的偏特化
+  template <typename T>
+  struct allocator_traits<world::Allocator<T>> {
+    using value_type      = T;
+    using pointer         = T*;
+    using size_type       = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    // ... 完整萃取列表
+  };
+}
+
+// === Future Scope（另立工单）===
+// Config / Processor / PerformanceStats → 迁移至独立功能工单
+```
+
+---
+
+### Q5 展示层影响 ❌
+
+**判定依据：** 工单完全未评估对 L3（needle-tools GLB 属性映射）的影响，仅在"个体输出动态关联"一句中一笔带过。
+
+**具体问题：**
+- `allocator_traits` 编译失败会导致 `world::StateUpdate` 无法实例化，needle-tools 订阅该 topic 的渲染管线**在当前状态下是否也无法编译**？需要明确说明
+- 没有 L3 回归测试计划：GLB 属性映射的字段对齐是否受 `alignment=64` 影响需验证
+- DDS/RTPS 广播状态的序列化格式在 Fix 前后是否保持**二进制兼容**，工单未承诺
+
+**修改建议：** 在 Acceptance Criteria 中增加：
+
+```markdown
+- [ ] needle-tools 端 GLB 属性订阅端到端编译验证通过（clang + libc++）
+- [ ] Fix 前后 RTPS wire format 二进制兼容性验证（对比序列化字节序）
+- [ ] L3 渲染管线回归：StateUpdate → GLB 属性映射字段无丢失
+```
+
+---
+
+## 总体判定：❌ 不通过，需返工
+
+| 维度 | 结论 | 严重度 |
+|---|---|---|
+| Q1 架构定位 | ❌ 模块未填，层级混淆 | 高 |
+| Q2 问题陈述 | ❌ 缺 MRE，Bug/Feature 混写 | 高 |
+| Q3 个体交互 | ✅ 基本合格，小幅补全 | 低 |
+| Q4 API 设计 | ❌ 范围溢出，引入新 Feature | 高 |
+| Q5 展示层影响 | ❌ L3 影响面未评估 | 中 |
+
+**核心返工动作（按优先级）：**
+
+1. **拆单**——将 `Config/Processor/PerformanceStats` 的 API 设计剥离为独立 Feature 工单，本单聚焦 `allocator_traits` 偏特化修复
+2. **补 MRE**——添加最小复现环境、完整编译错误日志、根因假设
+3. **填模块**——明确 `world::message / L1-core`，并标注 L3 影响面
+4. **L3 回归计划**——补充 needle-tools 编译验证和二进制兼容承诺

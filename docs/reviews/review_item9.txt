@@ -1,0 +1,154 @@
+## PRD 审核报告
+
+**项目**: pub/sub-loop · `world::message` 模块
+**工单**: [BUG] Iterator traits do not work with tensor_parallel iterators on windows
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ❌
+
+**判定依据**: 标题声称修复 Windows 平台上 `tensor_parallel` 迭代器 trait 兼容问题，但正文完全回避了这个具体缺陷，转而描述一个通用的 `world::message` 消息层基础设施。两者之间**没有因果链**。
+
+**具体问题**:
+- `tensor_parallel` 与 `world::message` 的关系未交代——前者属于 L1 计算内核还是跨层依赖？
+- Windows 平台特定性未体现在任何架构约束或测试矩阵中
+- L1/L2/L3 分层在正文中仅有 L1 提及，L2 决策层和 L3 needle-tools 的影响路径缺失
+
+**修改建议**:
+```
+# 架构定位需补充：
+1. 明确 tensor_parallel 在 L1 世界模型中的位置
+2. 说明 Iterator trait 失效如何阻断 pub/sub-loop 的状态同步
+3. 增加"平台矩阵"：Linux ✅ / macOS ✅ / Windows ❌（当前缺陷）
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定依据**: BUG 工单的核心职责是**复现路径 + 根因假设**，但正文零复现步骤，零错误信息，零根因分析。
+
+**具体问题**:
+- 缺少最小复现代码（MRE）
+- 缺少错误输出（编译报错 / 运行时 panic / 链接失败？）
+- `tensor_parallel iterators` 的 trait 边界是什么？哪个 trait 不满足？（`Send`? `Sync`? 自定义 trait?）
+- "Windows 特定"的触发条件未说明（MSVC vs MinGW？特定 Windows SDK 版本？）
+
+**修改建议**:
+```markdown
+## 问题复现
+**环境**: Windows 11, MSVC 19.x / 或 MinGW-w64
+**触发条件**:
+​```cpp
+// 最小复现
+tensor_parallel::Iterator<StateBuffer> it = ...;
+std::for_each(it.begin(), it.end(), [](auto& s){ ... }); // ❌ 编译失败
+​```
+**错误信息**: `error C2676: binary '++': 'tensor_parallel::Iterator<T>'...`
+**根因假设**: MSVC 对 iterator_category 的严格检查 vs GCC 宽松推导
+```
+
+---
+
+### Q3 个体交互 ✅ ⚠️
+
+**判定依据**: 交互模型表格和 pub/sub 流图结构清晰，三类个体角色分工合理，基本符合 pub/sub-loop 规范。**但与 BUG 的关联性存疑。**
+
+**具体问题**:
+- `StateProcessorIndividual` 是否是触发 iterator trait 问题的调用方？未说明
+- `SchedulerIndividual` 的 CRoutine 在 Windows 下是否有协程兼容性风险（与本 BUG 相关还是独立问题）？
+- 流图 `channel://world/message/update` 正常，但 Monitor 的诊断通道在 Windows 缺陷场景下是否能正常工作？
+
+**修改建议**:
+```
+在交互表格增加一列"Windows 缺陷影响"：
+| 个体类型 | Windows 下当前状态 |
+|---|---|
+| StateProcessorIndividual | ❌ iterator 调用链断裂 |
+| SchedulerIndividual | ⚠️ 待验证 |
+| MonitorIndividual | ⚠️ 诊断数据可能不完整 |
+```
+
+---
+
+### Q4 API 设计 ❌
+
+**判定依据**: 提供的 API 是全新设计的 `Processor` 类，与标题所述的"修复 iterator trait"完全脱节——这是新增功能而非缺陷修复的 API 变更说明。
+
+**具体问题**:
+- `Config::enable_simd` 和 `alignment=64` 与 iterator trait 修复有何关系？
+- `StateView process_tick(...)` 是新接口还是现有接口的修复版本？差异点在哪里？
+- 未标注 **Before/After** 对比——BUG 修复 PRD 的核心 API 文档形式
+- Windows ABI 兼容性标注缺失（`__declspec(dllexport)`? C-ABI 约束?）
+- `from_json` 在 Windows 路径（`\` vs `/`）下的处理未说明
+
+**修改建议**:
+```cpp
+// ❌ 修复前（Windows 下编译失败）
+template<typename Iter>
+void process_range(Iter begin, Iter end); // tensor_parallel::Iterator 不满足 std::input_iterator
+
+// ✅ 修复后
+template<typename Iter>
+requires world::message::WorldIterator<Iter>  // 自定义 concept，兼容 MSVC
+void process_range(Iter begin, Iter end);
+
+// 新增 concept 定义
+template<typename T>
+concept WorldIterator = requires(T it) {
+    { *it } -> std::convertible_to<StateBuffer>;
+    { ++it } -> std::same_as<T&>;
+    // ... MSVC 严格要求的完整 trait 集
+};
+```
+
+---
+
+### Q5 展示层影响 ❌
+
+**判定依据**: needle-tools（L3）作为 GLB 属性映射的消费端，在 Windows 平台缺陷下的影响**完全未评估**。
+
+**具体问题**:
+- iterator 失效是否导致 GLB 属性流中断？中断后 needle-tools 的降级行为是什么？
+- Windows 下 DDS/RTPS 广播是否受影响（网络层 vs 计算层的故障隔离边界）？
+- L3 展示层是否有 Windows 特定的渲染路径依赖 `tensor_parallel` 的输出？
+- 缺少展示层的**故障降级策略**描述
+
+**修改建议**:
+```markdown
+## 展示层影响评估（L3 needle-tools）
+
+| 场景 | Windows 缺陷下行为 | 降级策略 |
+|---|---|---|
+| GLB 属性实时更新 | ❌ 状态流中断，属性冻结 | 显示最后有效帧 + 警告 badge |
+| DDS/RTPS 广播 | ✅ 网络层独立，不受影响 | 无需降级 |
+| 个体位置渲染 | ⚠️ 数据陈旧风险 | 超时 3s 后灰显个体 |
+
+**用户可见影响**: Windows 用户的 needle-tools 视图中个体状态将停止更新
+```
+
+---
+
+## 总体判定
+
+```
+❌ 不通过准入审核
+```
+
+| 维度 | 得分 | 权重问题 |
+|---|---|---|
+| Q1 架构定位 | ❌ | 标题与正文架构描述严重错位 |
+| Q2 问题陈述 | ❌ | BUG 工单无复现路径，无根因 |
+| Q3 个体交互 | ✅⚠️ | 结构可用，Windows 影响面未标注 |
+| Q4 API 设计 | ❌ | 新功能 API 混入缺陷修复工单 |
+| Q5 展示层影响 | ❌ | L3 影响评估完全缺失 |
+
+**核心矛盾**: 这张工单存在**身份混乱**——标题是平台兼容性 BUG，正文是模块基础设施设计文档，二者几乎是两个独立需求被强行合并。
+
+**建议拆分为**:
+1. **BUG 工单**（保留标题）→ 专注 Windows iterator trait 复现、根因、最小修复
+2. **FEAT 工单**（新建）→ `world::message::Processor` API 设计与 `Config` 结构规范化
+
+在拆分并补全 Q1/Q2/Q4/Q5 缺失信息后，重新提交审核。

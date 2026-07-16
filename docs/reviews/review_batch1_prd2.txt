@@ -1,0 +1,162 @@
+这道PRD审核题不涉及文件创建，直接进入逐条分析。
+
+---
+
+# PRD 审核报告
+
+**[FEA] common模块世界时钟同步原语——跨节点TickClock对齐与漂移校正机制**
+
+---
+
+## Q1 — 架构定位
+
+**✅ 通过，但有瑕疵**
+
+**判定依据：**
+- 归属 `common` + L1 World Model 层，定位正确。时钟是世界状态一致性的基础设施，不应在 L2/L3 中各自实现。
+- 但存在一个隐性越界风险：`service_discovery` 依赖项被用于「选举 tick master」，这是一个**分布式共识行为**，已逸出 common 模块的纯原语边界，触碰了类似 Raft/Bully 的选举协议语义。
+
+**修改建议：**
+> 将 master 选举职责从 `TickClock` 自身剥离，改为通过回调/策略接口注入：
+> ```cpp
+> class SynchronizedTickClock {
+>     void set_master_resolver(std::function<NodeId()> resolver);
+> };
+> ```
+> `service_discovery` 只作为外部策略实现，`TickClock` 本体保持无状态原语。否则 common 模块会对 service_discovery 产生硬依赖，违反层级内聚原则。
+
+---
+
+## Q2 — 问题陈述
+
+**✅ 通过**
+
+**判定依据：**
+- 三个问题场景（状态融合错位、因果违反、回放不可重现）表述清晰，与 pub/sub-loop 的世界模型语义强绑定，不是泛化的「NTP问题」。
+- 个体迁移场景（节点A→节点B）作为驱动案例，具体可验证。
+
+**修改建议（提升质量，非阻断）：**
+> 补充量化前置数据：「当前实测在 N 节点压测下漂移峰值为 X ms，触发了 Y 次融合错位」。PRD 目前仅有定性描述，缺少「现状有多坏」的基线，会让评审者无法判断 2ms 收敛目标是否合理，也增大 Acceptance Criteria 的验收争议。
+
+---
+
+## Q3 — 个体交互
+
+**❌ 未通过**
+
+**判定依据：**
+这是本PRD最严重的缺口。`SynchronizedTickClock` 解决的是**节点层**的时钟一致性，但 PRD 完全没有描述**个体（Agent）视角的行为语义**：
+
+1. **个体如何感知 tick 校正？** 当 `apply_beacon()` 触发校正（`tick_rate *= ...`），本地 tick 可能发生突跳或减速。个体的 `on_tick()` 回调会被重复调用、跳过、还是延迟？
+2. **校正窗口内的个体状态如何处理？** 若节点慢了 3 ticks 后做批量校正，个体是否需要重放这 3 个 tick 的决策？
+3. **DDS/RTPS 广播的个体状态消息携带的是本地 tick 还是同步后 tick？** 两者语义不同，会直接影响 fusion engine 的行为。
+
+**修改建议（必须补充）：**
+> 在正文增加「个体层影响」章节，明确以下三点：
+> ```
+> 1. tick 校正对 Agent::on_tick() 的调用语义：
+>    - 方案A: 校正仅调整 wall-clock 映射，不影响 tick 调用次数（推荐）
+>    - 方案B: 可能插入或跳过 tick 调用（需要 L2 决策层适配）
+>
+> 2. SyncBeacon 中的 WorldTick 与 Agent 状态消息中的 tick 字段对齐规则
+>
+> 3. 个体迁移时的 tick 状态移交协议（迁移包应携带 (tick, drift_estimate) 元组）
+> ```
+
+---
+
+## Q4 — API 设计
+
+**❌ 未通过（2处阻断性问题）**
+
+**问题4a — master/follower 架构未显式建模：**
+```cpp
+// 当前 API 中 master 和 follower 共用同一个类
+class SynchronizedTickClock {
+    SyncBeacon generate_beacon() const;  // master 调用
+    void apply_beacon(...);              // follower 调用
+};
+```
+同一个对象同时持有 `generate_beacon` 和 `apply_beacon`，但运行时一个节点只能是其中之一。这会导致调用方误用（follower 误调 `generate_beacon`），且无法在类型系统层面防护。
+
+**问题4b — 漂移校正的 tick 连续性未定义：**
+```cpp
+void apply_beacon(const SyncBeacon& beacon);
+// 问题：校正后 current_tick() 可能回退？
+```
+`drift_correction_rate = 0.1f` 的渐进校正是可接受的，但如果本地快了 50 ticks（极端抖动），校正期间 `current_tick()` 的单调性是否保证？PRD 未说明。
+
+**修改建议：**
+
+针对4a，拆分角色：
+```cpp
+class MasterTickClock {
+    WorldTick current_tick() const;
+    void advance(Timestamp now);
+    SyncBeacon generate_beacon() const;
+};
+
+class FollowerTickClock {
+    WorldTick current_tick() const;
+    void advance(Timestamp now);
+    void apply_beacon(const SyncBeacon&);
+    Duration estimated_drift() const;
+    SyncMetrics metrics() const;
+};
+```
+
+针对4b，在 `ClockSyncConfig` 增加单调性保证字段：
+```cpp
+struct ClockSyncConfig {
+    bool guarantee_monotonic = true;  // 若true，tick 绝不回退，校正仅通过减速实现
+    Duration max_correction_per_beacon = 10ms;  // 单次最大校正量
+};
+```
+并在 Acceptance Criteria 明确加入：「`current_tick()` 在任意场景下保持单调递增」。
+
+---
+
+## Q5 — 展示层影响（L3 needle-tools）
+
+**⚠️ 有条件通过（需补充说明）**
+
+**判定依据：**
+- `SyncMetrics::clock_quality` 作为一个指标字段已经隐式考虑了可观测性，这是好的。
+- 但 needle-tools 通常订阅世界状态做可视化/调试，`clock_quality < 0.95` 时展示层会看到什么现象（帧跳变？时间轴撕裂？），PRD 没有说明。
+
+**修改建议（非阻断，但影响接入体验）：**
+> 补充一段「L3 可观测性接口」说明：
+> ```
+> SyncMetrics 应通过 profiler 发布到标准诊断 topic（如 /world/clock/sync_metrics），
+> needle-tools 可订阅该 topic 渲染：
+>   - 漂移历史折线图
+>   - clock_quality 热力图（按节点）
+>   - beacon 丢失事件标注
+> ```
+> 同时建议在 `SyncBeacon` 中增加 `NodeId source_node` 字段，供 needle-tools 区分各节点漂移情况。
+
+---
+
+## 总体判定
+
+```
+┌────────────────────────────────────────────────┐
+│  总体判定: ❌ REJECT — 需修改后重新提交         │
+└────────────────────────────────────────────────┘
+```
+
+| 问题 | 结论 | 阻断级别 |
+|------|------|---------|
+| Q1 架构定位 | ✅ 基本正确，service_discovery 依赖需解耦 | P1 |
+| Q2 问题陈述 | ✅ 逻辑清晰，补充量化基线更好 | P2 |
+| Q3 个体交互 | ❌ **缺失核心章节**，个体视角完全未描述 | **P0 阻断** |
+| Q4 API 设计 | ❌ master/follower 未分型，tick 单调性未保证 | **P0 阻断** |
+| Q5 展示层影响 | ⚠️ metrics 有雏形，L3 接入路径未说明 | P1 |
+
+**核心问题：** PRD 将 `SynchronizedTickClock` 描述为 common 层原语，但对其最关键的下游消费者——**个体（Agent）**——的行为语义完全空白。这在一个以「类区块链个体系统」为核心的架构中是根本性缺失。API 设计的 master/follower 混同问题如果进入实现阶段，会在多节点集成时产生难以追踪的竞态。
+
+**建议修改优先级：**
+1. 补充「个体层 tick 校正语义」（Q3，2-3天内）
+2. 拆分 `MasterTickClock` / `FollowerTickClock`（Q4a，1天）
+3. 明确 `guarantee_monotonic` 契约（Q4b，半天）
+4. 解耦 service_discovery 依赖为策略注入（Q1，1天）

@@ -1,0 +1,188 @@
+## PRD 审核报告：Support Programmatic Dependent Launch (PDL)
+
+---
+
+### Q1 架构定位 ❌
+
+**判定理由：**
+PRD 标题声称实现 **PDL（Programmatic Dependent Launch）**，但正文通篇描述的是 `world::component` 的状态处理能力（`process_tick`、`StateView`、SIMD 对齐），两者存在**根本性语义断裂**。
+
+PDL 的核心语义是：**A 的启动依赖 B 的就绪状态**，即生命周期编排与依赖拓扑。但 PRD 中完全没有：
+- 依赖声明机制（谁依赖谁）
+- 就绪信号定义（ready condition）
+- 启动顺序拓扑（DAG 或偏序）
+- 失败传播策略
+
+**修改建议：**
+```
+选择其一：
+A) 将标题改为 "world::component 状态处理器核心实现"，
+   删除 PDL 定位，专注 Processor/tick 能力。
+
+B) 保留 PDL 标题，重写正文核心：
+   - 定义 DependencyGraph<IndividualID>
+   - 定义 ReadyCondition（pub/sub 信号触发 or tick 到达）
+   - 定义 LaunchPolicy（串行/并行/超时降级）
+   - Processor 仅作为 PDL 执行后的承载体提及
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定理由：**
+"为什么需要 PDL"完全缺失。PRD 直接跳入方案描述，没有回答：
+
+- 当前无 PDL 时，系统出现什么故障？（竞态？个体空转？状态撕裂？）
+- 影响范围有多大？（多少个个体受影响？哪些 tick 频率？）
+- 现有 workaround 代价是什么？
+
+**修改建议：**
+```markdown
+## Problem Statement（需新增）
+
+### 当前痛点
+- 个体 B 在 A 未完成初始化时即开始订阅，
+  导致首帧状态为 undefined（已知 bug #xxx）
+- SchedulerIndividual 无法感知 StateProcessor 就绪，
+  tick 调度存在 N ms 空窗期，造成位置数据断帧
+
+### 量化影响
+- 受影响个体类型：StateProcessorIndividual（当前 ~3 类）
+- 复现率：冷启动场景下 12%（基于压测数据）
+
+### 不解决的后果
+- L3 needle-tools GLB 场景出现个体位置跳变
+```
+
+---
+
+### Q3 个体交互 ⚠️（条件通过）
+
+**判定理由：**
+交互表格结构合理，三类个体角色划分清晰，pub/sub 通道示意图可读。但存在两个问题：
+
+**问题 A：PDL 场景下的交互缺失**
+表格描述的是**稳态交互**，没有描述**启动阶段**的依赖握手：
+- `SchedulerIndividual` 如何知道 `StateProcessor` 已 ready 才能开始 tick？
+- `MonitorIndividual` 是否需要在所有依赖就绪后才激活诊断通道？
+
+**问题 B：通道命名与 RTPS 广播语义对齐不足**
+`channel://world/component/update` 未说明是 DDS Topic 还是内部 IPC，QoS 策略（可靠性/历史深度）缺失。
+
+**修改建议：**
+```markdown
+新增启动阶段交互行：
+
+| 个体类型            | 启动依赖                        | 就绪信号                              |
+|---|---|---|
+| StateProcessor      | 无（根节点）                    | pub ready://world/component/{id}      |
+| SchedulerIndividual | StateProcessor ready            | 收到 ready 信号后启动 CRoutine tick   |
+| MonitorIndividual   | SchedulerIndividual tick≥1次   | 诊断通道激活                          |
+
+通道补充 QoS：
+channel://world/component/update
+  reliability: RELIABLE
+  history: KEEP_LAST(1)
+  durability: TRANSIENT_LOCAL  # 保证迟到订阅者能收到最新状态
+```
+
+---
+
+### Q4 API 设计 ❌
+
+**判定理由：**
+API 暴露了合理的状态处理接口，但作为 **PDL** 需求，核心 API 完全缺位，且现有 API 有以下问题：
+
+**问题 A：PDL API 缺失**
+没有任何接口表达"依赖注册"、"就绪通知"、"依赖等待"：
+```cpp
+// 完全缺失的 PDL 核心接口示例：
+class Processor {
+    void declare_dependency(IndividualID upstream);   // ❌ 缺
+    bool wait_ready(std::chrono::milliseconds timeout); // ❌ 缺
+    void notify_ready();                               // ❌ 缺
+};
+```
+
+**问题 B：`process_tick` 返回值不安全**
+`StateView` 从名称看是视图（非拥有型），但 `StateBuffer` 生命周期未约束，存在悬空引用风险。
+
+**问题 C：语言实现矛盾**
+Sub-tasks 写"核心实现（Python）"，但 API Surface 全是 C++。L1 世界模型是否允许 Python 实现？需要明确。
+
+**修改建议：**
+```cpp
+namespace world::component {
+
+// 新增：PDL 依赖声明
+struct Dependency {
+    IndividualID upstream_id;
+    ReadyCondition condition;  // e.g., kFirstTickComplete, kInitialized
+    std::chrono::milliseconds timeout{5000};
+};
+
+class Processor {
+public:
+    explicit Processor(Config c);
+    
+    // PDL 接口
+    void declare_dependency(Dependency dep);
+    [[nodiscard]] bool await_dependencies();  // 阻塞直到所有依赖就绪或超时
+    void notify_ready();                       // 发布 ready 信号到 pub/sub
+    
+    // 原有接口（生命周期后置）
+    bool initialize();
+    StateView process_tick(const StateBuffer& s, uint64_t tick) &; // & 限定符防悬空
+    PerformanceStats get_stats() const;
+};
+
+}  // namespace world::component
+```
+
+---
+
+### Q5 展示层影响 ⚠️（条件通过）
+
+**判定理由：**
+PRD 提及"最终体现为 needle-tools GLB 场景中个体的行为多样性"，说明作者有 L3 意识，但描述停留在**意向层**，缺乏可验收的展示层约束。
+
+**具体缺失：**
+- PDL 失败时（依赖超时），GLB 场景如何降级展示？（隐藏个体？显示占位符？）
+- 启动时序变化是否影响 needle-tools 的首帧渲染时机？
+- 个体就绪状态是否需要在 L3 有视觉反馈（如加载态）？
+
+**修改建议：**
+```markdown
+## L3 展示层影响（需新增章节）
+
+| 场景                    | 当前行为          | PDL 后预期行为              |
+|---|---|---|
+| 冷启动依赖未就绪         | 个体位置跳变/NaN  | 个体隐藏，就绪后淡入         |
+| 依赖超时（>5000ms）      | 崩溃或空帧        | 展示降级占位体，上报诊断通道  |
+| 正常启动序列完成          | 同前              | 无视觉差异（零感知目标）      |
+
+needle-tools 接入点：
+- 订阅 ready://world/component/{id} 控制个体可见性
+- 首帧延迟容忍：≤ 200ms（超出需 UX 评审）
+```
+
+---
+
+## 总体判定
+
+```
+┌─────────────────────────────────────────────────────┐
+│  总体判定：❌  REJECT — 需重大修订后重新提审         │
+└─────────────────────────────────────────────────────┘
+```
+
+| 维度 | 结论 | 严重度 |
+|---|---|---|
+| Q1 架构定位 | ❌ 标题与内容语义断裂 | 🔴 阻塞 |
+| Q2 问题陈述 | ❌ 完全缺失 Why | 🔴 阻塞 |
+| Q3 个体交互 | ⚠️ 稳态完整，启动阶段缺失 | 🟡 主要 |
+| Q4 API 设计 | ❌ PDL 核心接口缺位，实现语言矛盾 | 🔴 阻塞 |
+| Q5 展示层影响 | ⚠️ 有意识但无约束，降级路径缺失 | 🟡 主要 |
+
+**核心矛盾：** 这是两张 PRD 混写在一起——一张是 `world::component` 状态处理器实现单，一张是尚未成型的 PDL 生命周期编排需求。**建议拆分为两个 Issue**，或明确选定一个方向后，按上述各条修改建议重写。

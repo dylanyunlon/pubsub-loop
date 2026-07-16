@@ -1,0 +1,166 @@
+# PRD审核报告：[BUG] tensor_parallel::complex 构建失败
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ❌
+
+**判定理由：** 标题是具体的编译器/链接器Bug（`tensor_parallel::complex` 模板实例化失败），但正文将其包装成 `world::tools` 模块的"功能需求"，定位严重错位。
+
+- 模块填写"?"，说明提交者自身也不清楚归属
+- `tensor_parallel::complex` 是 L1 世界模型的数值计算原语，与 `world::tools`（构建工具链）是两个不同层级
+- 将编译Bug升格为架构级需求，会导致错误的人员分配和优先级判断
+
+**修改建议：**
+```
+模块: world::core::math / tensor_parallel
+类型: BUG（非Feature/Enhancement）
+受影响层: L1 世界模型 — 数值类型系统
+根因定位: tensor_parallel::complex<T> 模板特化在目标平台的
+          编译单元可见性 / ODR 违规 / 头文件包含顺序问题
+```
+标题改为：`[BUG][L1] tensor_parallel::complex<T> 模板实例化导致构建失败（多平台）`
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定理由：** 这是P1 Bug，但正文完全缺失Bug的核心要素。
+
+缺失项清单：
+
+| 必填项 | 当前状态 |
+|---|---|
+| 最小复现代码（MRE） | ❌ 无 |
+| 编译器报错信息 | ❌ 无 |
+| 受影响平台/编译器版本 | ❌ 无 |
+| 正常/异常行为对比 | ❌ 无 |
+| 首次出现版本/commit | ❌ 无 |
+
+**修改建议：** 补充标准Bug描述块：
+```markdown
+## 复现步骤
+1. 定义使用 tensor_parallel::complex<float> 的结构体
+2. 跨编译单元实例化
+3. 链接时报错：undefined reference to ...
+
+## 期望行为
+成功编译并链接
+
+## 实际行为
+```
+error: implicit instantiation of undefined template
+'tensor_parallel::complex<float>'
+```
+
+## 环境
+- 编译器: GCC 12.3 / Clang 17
+- 平台: x86_64, aarch64
+- 首发commit: abc1234
+```
+
+---
+
+### Q3 个体交互 ⚠️（条件通过）
+
+**判定理由：** 交互模型表格本身格式规范，但与Bug的关联是强行嫁接的。
+
+- `StateProcessorIndividual` 使用 `world::tools` API 这条映射合理
+- 但当前Bug的根因是 `tensor_parallel::complex` 的模板实例化，与 pub/sub 通道交互无直接关系
+- 正确的关联路径应是：`complex<T>` 是个体状态的底层数值类型 → 类型系统损坏 → 状态序列化失败 → pub/sub 通道数据损坏
+
+**修改建议：** 将交互模型聚焦于影响链：
+```
+tensor_parallel::complex<T>  [构建失败]
+        ↓ 阻塞
+StateBuffer 序列化层
+        ↓ 阻塞
+StateProcessor ──pub──> channel://world/tools/update ──sub──> Monitor
+```
+表格中增加"受阻状态"列，标注哪些个体在此Bug修复前无法正常运行。
+
+---
+
+### Q4 API设计 ❌
+
+**判定理由：** 当前API与Bug完全不相关，且存在设计问题。
+
+**不相关性：** `world::tools::Processor` / `world::tools::Config` 是为"需求"虚构的API，与 `tensor_parallel::complex` 构建失败的修复毫无关系。P1 Bug的API Surface应聚焦于问题类型本身。
+
+**API自身设计问题：**
+```cpp
+// ❌ 问题1: from_json 返回 Config 而非 Result<Config>，
+//    无法表达解析失败
+static Config from_json(std::string_view p);
+
+// ❌ 问题2: initialize() 返回 bool，错误信息丢失
+bool initialize();
+
+// ❌ 问题3: process_tick 未标注线程安全性
+StateView process_tick(const StateBuffer& s, uint64_t tick);
+```
+
+**修改建议：** Bug修复的正确API描述应为：
+```cpp
+namespace tensor_parallel {
+
+// 修复前（触发ODR/实例化失败）
+template<typename T>
+class complex { ... };  // 仅声明，无显式实例化
+
+// 修复后（显式实例化声明 + 定义分离）
+// complex.hpp
+extern template class complex<float>;
+extern template class complex<double>;
+
+// complex.cpp
+template class complex<float>;
+template class complex<double>;
+
+}  // namespace tensor_parallel
+```
+
+---
+
+### Q5 展示层影响 ⚠️（条件通过）
+
+**判定理由：** 提及了 needle-tools 集成测试和 GLB 动态输出，方向正确，但描述过于笼统。
+
+- L3 needle-tools 依赖 L1 数值类型正确性，影响链逻辑上成立
+- 但缺少具体的影响评估：哪些 needle-tools 场景受阻？GLB 导出的哪个字段依赖 `complex<T>`？
+
+**修改建议：** 补充展示层影响矩阵：
+```markdown
+## L3 展示层影响评估
+
+| needle-tools 场景 | 依赖路径 | 当前状态 |
+|---|---|---|
+| 频域可视化渲染 | complex<float> → FFT → GLB mesh | 🔴 构建阻塞 |
+| 状态回放时间轴 | complex<double> → 状态插值 | 🔴 构建阻塞 |
+| 实时监控面板 | 仅依赖实部，可降级 | 🟡 部分可用 |
+```
+
+---
+
+## 总体判定
+
+```
+╔══════════════════════════════════════════════════════╗
+║  总体判定: ❌ 打回重写（不予准入）                      ║
+╚══════════════════════════════════════════════════════╝
+```
+
+**核心问题（阻塞准入的两项）：**
+
+1. **架构错位（Q1+Q4）：** 将编译器Bug包装成架构需求，虚构了与Bug无关的API，会导致工程师按需求开发而非修复根因
+2. **问题陈述缺失（Q2）：** P1 Bug没有MRE、没有报错信息、没有平台信息，无法指派给任何人开始工作
+
+**重写优先级：**
+
+| 步骤 | 负责人 | 交付物 |
+|---|---|---|
+| 1. 补充MRE + 编译器报错 | Bug发现者 | 可复现的最小工程 |
+| 2. 确认模块归属（tensor_parallel vs tools） | 架构师 | 模块OWNER确认 |
+| 3. 删除虚构API，补充修复方案 | L1负责人 | 显式实例化方案 |
+| 4. 重新评估L3影响 | needle-tools负责人 | 影响矩阵 |

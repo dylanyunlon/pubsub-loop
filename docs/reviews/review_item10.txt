@@ -1,0 +1,117 @@
+## PRD审核报告：[BUG] Low performance of sorting with OMP backend
+
+---
+
+### Q1 架构定位 ❌
+
+**判定理由：** 标题声称是"OMP backend排序性能低"的BUG，但正文完全没有提及OMP（OpenMP）、排序算法、或并行后端。`world::profiler`被定位为"延迟直方图、更新率统计、基准测试"模块，与排序性能问题毫无关联。标题与正文描述的是两个不同的事物。
+
+**具体修改建议：**
+- 二选一：要么将标题改为 `[BUG]: world::profiler 模块在高频 pub/sub 场景下性能不达标`；要么将正文替换为真正描述OMP排序问题的内容（受影响的数据结构、触发条件、性能回归数据）。
+- 在 `## Description` 首行补充：**复现版本**、**基线vs实测数据**、**触发该BUG的最小代码路径**。
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定理由：** BUG工单缺少最基本的问题陈述要素。没有：① 实际观测到的异常现象；② 期望行为；③ 复现步骤；④ 环境信息（OMP线程数、数据规模、硬件）；⑤ 任何量化指标（慢了多少？超过什么阈值算"low performance"）。当前正文是一段功能需求描述，不是BUG报告。
+
+**具体修改建议：**
+
+```markdown
+## Problem Statement
+- **Observed**: OMP后端排序在N>10000个体状态时耗时 Xms，超过帧预算 Yms
+- **Expected**: 排序完成时间 ≤ Zms（与串行后端持平或更优）
+- **Reproduction**:
+  1. 启动 StateProcessorIndividual，配置 OMP_NUM_THREADS=8
+  2. 注入 10000 条 StateBuffer
+  3. 调用 process_tick()，perf record 观察 __kmp_fork_call 热点
+- **Environment**: GCC 12 / libomp 15 / AVX2 / 32-core
+```
+
+---
+
+### Q3 个体交互 ✅（条件通过）
+
+**判定理由：** 个体交互表格结构合理，`StateProcessorIndividual / SchedulerIndividual / MonitorIndividual` 三角色分工清晰，pub/sub拓扑图也符合L1世界模型的广播状态设计。
+
+**但有一个关键缺口：** 既然是OMP排序BUG，`StateProcessorIndividual` 内部的排序是发生在 `process_tick()` 之前、之中、还是之后？OMP的fork-join边界在哪里？这会影响 `SchedulerIndividual` 的tick调度是否会被OMP线程池阻塞。
+
+**修改建议：** 在交互表格下方补充一行时序说明：
+
+```
+tick N: Scheduler──CRoutine──> StateProcessor[sort_omp()] ──pub──> Monitor
+                                      ↑
+                              此处OMP fork-join延迟需量化
+```
+
+---
+
+### Q4 API设计 ⚠️（部分通过）
+
+**判定理由：** API结构本身（`Config/Processor/process_tick/get_stats`）符合`world::`命名空间规范，`message-safe + standard_layout`约束明确。但针对这个OMP排序BUG，API层面有两个严重遗漏：
+
+1. `Config` 中有 `enable_simd` 但**没有 OMP 控制字段**——这是BUG的核心参数却不在配置里。
+2. `PerformanceStats` 返回类型未定义，无法判断它是否能暴露"排序耗时"这一关键指标。
+
+**具体修改建议：**
+
+```cpp
+struct Config {
+    size_t individual_capacity = 10000;
+    bool   enable_simd         = true;
+    size_t alignment           = 64;
+    // ↓ 补充 OMP 控制
+    int    omp_num_threads     = -1;   // -1 = 跟随环境变量
+    bool   enable_omp_sort     = true; // 允许A/B对比关闭
+    static Config from_json(std::string_view p);
+};
+
+struct PerformanceStats {
+    uint64_t sort_duration_us;    // 排序专项耗时 ← BUG核心观测点
+    uint64_t total_tick_us;
+    uint32_t omp_threads_used;
+    // ...
+};
+```
+
+---
+
+### Q5 展示层影响 ❌
+
+**判定理由：** 正文仅用一句话带过："确保 needle-tools GLB 渲染达到目标帧率"，但没有任何具体内容：① 目标帧率是多少（30fps？60fps？）；② 排序延迟如何传导到L3渲染层；③ `MonitorIndividual` 通过诊断通道暴露的数据如何在needle-tools中可视化。对于P1级别的性能BUG，展示层的验收标准必须可测量。
+
+**具体修改建议：**
+
+```markdown
+## L3 展示层影响（needle-tools）
+- **帧率目标**: GLB场景渲染 ≥ 60fps（individual_capacity=10000）
+- **传导链路**: sort_duration_us 超过 8ms → process_tick 阻塞 → pub 延迟 
+  → StateUpdate 到达 needle-tools 滞后 → 渲染帧丢失
+- **可视化验收**: MonitorIndividual 诊断通道输出 sort_duration 热力图，
+  P99 延迟需在 needle-tools 性能面板中实时可见
+- **回归测试**: CI中加入 needle-tools headless 渲染基准，
+  帧时间标准差 > 2ms 则 pipeline 失败
+```
+
+---
+
+## 总体判定
+
+```
+❌ 不通过 — 退回修改
+```
+
+| 维度 | 得分 | 核心问题 |
+|---|---|---|
+| Q1 架构定位 | ❌ | 标题与正文描述完全脱节 |
+| Q2 问题陈述 | ❌ | 无复现步骤、无量化数据、非BUG格式 |
+| Q3 个体交互 | ✅ | 结构合理，补充OMP边界说明即可 |
+| Q4 API设计 | ⚠️ | 缺OMP控制字段和Stats定义 |
+| Q5 展示层 | ❌ | 无帧率目标、无传导链路、无可测标准 |
+
+**最高优先修复项（按序）：**
+1. 统一标题与正文——先确定这张单到底在修什么
+2. 补充 `## Problem Statement`，给出可复现的最小场景和量化基线
+3. 在 `Config` 加入 OMP 控制字段，在 `PerformanceStats` 暴露 `sort_duration_us`
+4. 展示层补充帧率目标和 needle-tools 验收标准

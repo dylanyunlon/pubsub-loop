@@ -1,0 +1,157 @@
+## PRD审核报告：[BUG] Add test case for nvbug 4678853
+
+---
+
+### Q1 架构定位 ❌
+
+**判定理由：** 标题声称是BUG修复（添加测试用例），但正文将其定位为`world::tools`模块的完整功能交付，包含需求分析、核心实现、集成测试、文档更新等Sub-tasks，与BUG ticket的边界严重错位。
+
+**具体问题：**
+- 标题定位：缺陷修复 → 加一个测试用例
+- 正文定位：完整模块交付 → 含API设计、SIMD优化、多平台验证
+- `world::tools`在L1世界模型中的层级归属未明确（是状态存储层还是工具链基础设施层？）
+- 与DDS/RTPS广播机制的关系未说明
+
+**修改建议：**
+```
+方案A（收窄）：将标题改为Feature，单独立 
+  [FEATURE]: world::tools Processor模块交付
+  [BUG]: nvbug 4678853 测试覆盖（仅含测试Sub-task）
+
+方案B（扩展）：在正文首行明确声明
+  "本ticket范围 = 复现测试 + 根因修复 + 回归验证，
+   不含新API设计"，并删除Config/Processor API章节
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定理由：** 完全缺失BUG的核心三要素——复现步骤、实际行为、期望行为。nvbug 4678853的具体内容对读者完全不透明。
+
+**具体问题：**
+- `nvbug 4678853`是内部编号，外部无法追溯
+- 不知道哪个平台触发（x86/ARM/嵌入式？）
+- 不知道是功能错误、崩溃、数据竞争还是性能退化
+- "缺陷修复"和"Add test case"逻辑上是两件事，但正文将其混淆
+
+**修改建议：**
+```markdown
+## Bug Description
+- **复现环境**: [平台/编译器/OS版本]
+- **触发条件**: StateProcessor在tick=N时调用process_tick()
+- **实际行为**: [崩溃/数据错误/超时，附错误日志]
+- **期望行为**: 返回合法StateView，无内存异常
+- **根因假设**: [可选，如：对齐参数未传递导致SIMD越界]
+- **nvbug链接**: [内网链接或摘要附件]
+```
+
+---
+
+### Q3 个体交互 ⚠️（条件通过）
+
+**判定理由：** 个体交互模型表格结构清晰，pub/sub通道路径`channel://world/tools/update`有明确意图，但与BUG场景的关联性为零——这是通用架构描述，不是问题场景下的交互分析。
+
+**具体问题：**
+- 未说明nvbug 4678853在哪个个体交互路径上被触发
+- `MonitorIndividual`通过诊断通道监控，但Acceptance Criteria中无对应验证项
+- `SchedulerIndividual`的CRoutine调度与本BUG的关联未说明
+- 交互图只有单向箭头，缺少错误传播路径
+
+**修改建议：**
+```
+1. 在表格新增"故障场景"列，标注哪个个体是BUG触发方
+2. 补充错误传播图：
+   StateProcessor──pub失败──> [错误] ──> Monitor诊断通道捕获
+3. Acceptance Criteria增加：
+   "MonitorIndividual可在诊断通道中观测到异常事件"
+```
+
+---
+
+### Q4 API设计 ❌
+
+**判定理由：** 对于一个BUG ticket，出现完整的新API设计（`Config`结构体 + `Processor`类）是严重的范围蔓延。且API本身存在设计缺陷。
+
+**具体问题：**
+
+| 问题 | 位置 | 说明 |
+|---|---|---|
+| 范围越界 | 整个API章节 | BUG单不应引入新公共API |
+| 错误处理缺失 | `initialize()` 返回`bool` | 应返回`Result<void, Error>`或抛出，bool无法携带错误信息 |
+| 线程安全未声明 | `Processor`类 | pub/sub多个体并发调用时是否需要外部加锁？ |
+| `from_json`异常策略 | `Config::from_json` | JSON解析失败时行为未定义 |
+| 生命周期未说明 | `StateView` | 是否是`StateBuffer`的视图？`StateBuffer`析构后是否悬空？ |
+
+**修改建议：**
+```
+若必须保留API章节（定性为Feature），修改如下：
+
+// 错误处理
+std::expected<void, ToolsError> initialize();
+
+// 线程安全注释
+/// @thread-safety: NOT thread-safe. External synchronization required.
+StateView process_tick(const StateBuffer& s, uint64_t tick);
+
+// 生命周期明确
+/// @note: StateView lifetime is bounded by the StateBuffer argument.
+StateView process_tick(const StateBuffer& s, uint64_t tick);
+
+若保持BUG ticket定位，删除此章节，仅保留测试用例代码。
+```
+
+---
+
+### Q5 展示层影响（L3 needle-tools）⚠️（条件通过）
+
+**判定理由：** 正文提到"needle-tools集成测试"和"从源码到GLB动态输出的完整交付链路"，说明作者意识到L3的存在，但影响分析流于表面。
+
+**具体问题：**
+- GLB动态输出的变化点未量化（新增字段？格式变更？）
+- `needle-tools`集成测试是验收条件还是Sub-task？两处均未对齐
+- `个体动态输出场景验证通过`这一AC完全没有可测试的定义
+- L3展示层的降级策略未说明（若`world::tools`故障，needle渲染如何回退？）
+
+**修改建议：**
+```markdown
+## L3展示层影响评估
+- **GLB输出变更**: [无变更 / 新增字段X / 格式版本升至v2]
+- **needle-tools兼容性**: 
+  - [ ] 现有GLB schema向后兼容验证
+  - [ ] needle渲染压力测试（10000个体并发输出）
+- **降级策略**: world::tools不可用时，needle-tools切换至
+  上一帧缓存数据，最大容忍3帧延迟
+- **AC可测试化**: 
+  "在x86平台10000个体场景下，GLB输出帧率≥目标帧率×0.95"
+```
+
+---
+
+## 总体判定
+
+### ❌ 不通过，需重大修订
+
+| 维度 | 评分 | 核心问题 |
+|---|---|---|
+| Q1 架构定位 | ❌ | BUG与Feature混用，层级归属不清 |
+| Q2 问题陈述 | ❌ | 零复现信息，BUG内容完全不透明 |
+| Q3 个体交互 | ⚠️ | 结构存在但与故障场景脱节 |
+| Q4 API设计 | ❌ | 范围蔓延+设计缺陷并存 |
+| Q5 展示层 | ⚠️ | 有意识但无可执行验收标准 |
+
+**根本矛盾：** 这是一张"挂着BUG标题的Feature PRD"。建议执行以下拆分：
+
+```
+拆分为两个ticket：
+
+Ticket A — [BUG] nvbug 4678853复现与修复
+  范围：复现测试用例 + 根因修复 + 回归验证
+  优先级：P1（维持）
+  
+Ticket B — [FEATURE] world::tools Processor模块
+  范围：Config/Processor API设计 + 多平台交付 + needle集成
+  优先级：重新评估（P2/P3）
+```
+
+在Ticket A补全Q2的复现三要素后，可进入开发流程。

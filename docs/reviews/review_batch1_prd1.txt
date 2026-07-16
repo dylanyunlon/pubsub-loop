@@ -1,0 +1,132 @@
+现在我来逐条审核这份PRD。
+
+---
+
+# PRD 审核报告
+
+**EPIC**: io模块个体状态序列化引擎——Schema-aware增量编码与跨ABI版本化传输格式
+**审核员**: pub/sub-loop PRD审核系统
+**审核日期**: 2026-07-16
+
+---
+
+## Q1 架构定位 ✅
+
+**判定：通过，有一处需补强**
+
+架构定位清晰且准确。L1层定位、数据流方向（`publish() → io::Serializer → transport → io::Deserializer → subscriber`）、热路径位置均描述到位。延迟预算（≤50µs @64KB）给出了具体数字，具备可验证性。
+
+**问题：** `[BUG] C-ABI Wire类型` 这一依赖标注为"同步开发"，但当前Proposed Design中 `WireHeader` 已经假设了Wire类型的内存布局（uint32/uint64字段对齐）。若Wire类型变更，WireHeader需联动修改，存在隐性耦合风险，PRD未说明谁owns这个接口边界。
+
+**修改建议：**
+> 在Dependencies表中补充一列"接口Owner"，明确 `C-ABI Wire类型` 由哪个模块定义（transport？message？），以及当Wire类型变更时io模块的适配责任边界。建议在架构图中显式标注"io层不持有Wire类型定义权"。
+
+---
+
+## Q2 问题陈述 ✅
+
+**判定：通过，数据质量需提升**
+
+四条问题陈述（无Schema感知、无增量编码、无版本化、全量带宽浪费）逻辑自洽，第4条带宽估算（100K × 256B × 30Hz = 768MB/s）有量化支撑，是PRD亮点。
+
+**问题一：** 256B的IndividualState大小与`IndividualState`实际定义未对应——Proposed Design中的AC写的是"64KB IndividualState"，与问题陈述中256B相差256倍，存在数字矛盾。
+
+**问题二：** 第1条"字段增减导致接收方解析失败"——这是`memcpy`的必然结果，但PRD没有说明当前生产环境是否已经出现过这类crash，还是预防性设计。P0优先级需要有实际触发的问题证据。
+
+**修改建议：**
+> ① 在文档头部用一个一致的数字定义IndividualState大小（建议以实测值为准，如"均值256B，最大64KB"，并说明AC中50µs对应的是最大场景）。② 在问题陈述前增加"**现状证据**"小节，引用一条实测数据或已发生事件（如"2026-Q2压测时发现跨版本部署导致subscriber crash 3次"），为P0定级提供依据。
+
+---
+
+## Q3 个体交互 ✅
+
+**判定：通过，但存在一个语义缺口**
+
+io模块作为个体间状态传输的编解码器定位准确。`DeltaEncoder`的`encode_delta(current, previous)`接口意味着编码器需要维护"上次状态"用于diff，这涉及个体生命周期中的一个关键问题：**个体下线/重上线时，订阅方持有的base state是否有效？**
+
+当前设计中 `decode_delta(base, delta_bytes)` 需要调用方提供base，但PRD未说明当个体重新上线（新的`IndividualId`或会话重置）时，订阅方如何感知"需要丢弃旧base并等待snapshot"。`sequence`字段存在于`WireHeader`中但AC里没有关于sequence gap检测的验收条件。
+
+**修改建议：**
+> 在"个体交互说明"中补充一段**状态重置语义**：
+> ```
+> 当 WireHeader.encoding == snapshot 时，订阅方必须无条件替换 base state。
+> 当 subscriber 检测到 sequence gap（跳跃 > 1）时，必须丢弃当前 delta
+> 并向发布方请求新的 snapshot（或等待下一个 snapshot 帧）。
+> ```
+> 并在AC中增加一条：`sequence gap 时订阅方不产生状态污染（脏数据不写入世界模型）`。
+
+---
+
+## Q4 API设计 ❌
+
+**判定：不通过，三个设计问题**
+
+API框架思路正确，但细节存在较严重问题：
+
+**问题一（严重）：`field_mask` 硬编码为 `uint64_t`，上限64字段**
+
+`IndividualState` 在roadmap中是可扩展的，目前 `StateSchema` 的 `fields` 列表已有4个字段，但`attrs: FloatArray`本身就可能是动态长度。64字段上限是否足够？更重要的是，`compute_field_mask` 的返回类型是 `uint64_t`，而 `WireHeader.field_mask` 也是 `uint64_t`，这两者耦合死了——将来字段超过64个，WireHeader是breaking change。
+
+**问题二（中等）：`DeltaEncoder<T>` 是无状态还是有状态？接口不清**
+
+`encode_delta(current, previous)` 的签名表明**调用方**负责管理previous状态，但 `encode_snapshot` 没有返回任何"已建立baseline"的信号。如果per-individual encoder是有状态的（内部存储上一帧），则API应该是 `encode(current)` 自动判断是否发snapshot；如果是无状态的，则调用方需要自己存储所有个体的previous state，在100K个体场景下内存开销是 `100K × sizeof(IndividualState)` 约200MB，这个成本PRD完全未提及。
+
+**问题三（轻微）：`CompatResult::Incompatible` 无降级策略**
+
+`check_compat()` 返回 `Incompatible` 后，调用方应该怎么做？drop message？报警？强制重连？PRD的版本兼容矩阵只定义了枚举值，没有规定行为契约，会导致transport层和业务层各自实现不同的错误处理逻辑。
+
+**修改建议：**
+
+① 将`field_mask`改为可变长度位图或分层设计：
+```cpp
+// 建议：预留扩展位，或改为 bitset
+struct FieldMask {
+    uint64_t bits[2];  // 支持128字段，WireHeader版本内固定
+    static constexpr size_t max_fields = 128;
+};
+```
+
+② 明确`DeltaEncoder`的状态模型，二选一并在PRD中说明：
+```
+选项A（有状态）: DeltaEncoder<T> per-individual，内部存previous
+  → 需要说明encoder生命周期与Individual生命周期绑定
+选项B（无状态）: encode_delta(cur, prev)，调用方管理previous
+  → 需要在带宽分析中加上"previous state缓存内存开销"评估
+```
+
+③ 在`CompatResult`的处理规范中补充：
+```cpp
+// 要求在接口注释中规定行为契约
+// Incompatible → 必须drop并emit MetricEvent::COMPAT_FAILURE
+// Forward/Backward → 允许继续，但emit MetricEvent::COMPAT_WARNING
+```
+
+---
+
+## Q5 展示层影响（L3 needle-tools）✅
+
+**判定：通过，但属于被动合格**
+
+PRD中完全未提及展示层，这在当前范围内是合理的——io模块是L1基础设施，L3 needle-tools通过L2决策层消费最终状态，不直接感知序列化格式。`WireHeader.sequence` 字段可为needle-tools提供帧序号用于状态回放/诊断，这是隐性收益。
+
+**潜在问题：** 增量编码改变了"observable state"的语义——needle-tools如果有任何直接tap transport层字节流做调试（如packet capture可视化），将来看到的是delta而非完整状态，可能影响调试工具链。
+
+**修改建议：**
+> 在Dependencies或影响分析中增加一行说明：
+> `needle-tools调试路径若依赖原始字节流还原IndividualState，需在io模块提供一个 decode_wire_frame(bytes) → IndividualState 的调试专用接口（可在非热路径实现，不受延迟约束）`。
+
+---
+
+## 总体判定
+
+```
+Q1 架构定位    ✅  通过（补充接口Owner）
+Q2 问题陈述    ✅  通过（修复数字矛盾，补充证据）
+Q3 个体交互    ✅  通过（补充状态重置语义）
+Q4 API设计     ❌  不通过（三处需修改后重审）
+Q5 展示层影响  ✅  通过（建议补充调试接口说明）
+```
+
+**总体结论：⛔ 暂不通过，需要修改后重审**
+
+本EPIC的整体方向和问题定义质量较高，特别是带宽量化分析和版本兼容矩阵的设计思路。**卡点在Q4**：`field_mask`的64字段硬上限与IndividualState的可扩展性存在架构矛盾；`DeltaEncoder`的状态模型不明确会导致实现层产生歧义。建议作者先决策DeltaEncoder的有状态/无状态方向，再修订API，连同Q2的数字矛盾一并修复后提交二审。预计修改工作量约0.5d。

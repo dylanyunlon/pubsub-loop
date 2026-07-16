@@ -1,0 +1,233 @@
+# [L3-002] DeltaFrame 二进制协议 PRD 审核报告
+
+---
+
+## Q1 架构定位 ✅（有条件）
+
+**判定依据**
+
+PRD 自述"Layer 2→3 协议"，定义 State Bridge ↔ needle-engine 之间的二进制格式，这是 L2/L3 边界的传输层设计，定位基本清晰。
+
+**具体问题**
+
+模块字段填写为 `?`，但 DeltaFrame 实际横跨两个关注点：
+
+- **编码格式**（属于 State Bridge 内部，L2 输出侧）
+- **解码 + 渲染驱动**（属于 needle-engine 接收侧，L3 输入侧）
+
+当前 PRD 将二者混入同一文档，后续实现时职责边界容易模糊。
+
+**修改建议**
+
+```
+模块: L2-StateBridge / L3-Receiver（跨层协议，需双模块 owner 签字）
+```
+
+协议文档应明确注明：*编码责任方 = State Bridge；解码责任方 = needle-engine Deserializer*。建议在文档头部增加一行 `Owner: [L2 owner] + [L3 owner]`。
+
+---
+
+## Q2 问题陈述 ❌
+
+**判定依据**
+
+PRD 的"终态描述"用一句话给出了带宽数字，"用户可见影响"只有一行。三段式结构（当前行为 → 为什么有问题 → 影响范围）完全缺失，无法支撑 P0 定级。
+
+**具体缺失**
+
+| 必要内容 | 现状 |
+|---|---|
+| 当前行为（现在用什么协议在跑） | ❌ 未说明 |
+| 为什么有问题（是已经在线上触发，还是预估） | ❌ 未区分"理论上限"与"实测瓶颈" |
+| 影响范围（哪些用户/场景/平台受影响） | ❌ 无具体描述 |
+| P0 依据（为何不能等到 P1） | ❌ 完全缺失 |
+
+**修改建议（示例段落结构）**
+
+```
+【当前行为】
+State Bridge 当前每帧向 needle-engine 推送全量 EntitySnapshot JSON，
+帧结构为 {entities: [{id, pos, rot, vel, attrs, mesh_ref}×N]}。
+在 staging 环境 500 个体场景下，已实测单帧负载约 48KB（JSON 序列化后），
+30Hz 下稳定带宽 ~1.4MB/s。
+
+【为什么有问题】
+移动端 4G 链路实测上行/下行各约 2MB/s，JSON 解析在低端 Android 设备上
+耗时 8-15ms/帧（实测数据来自 Pixel 4a），超过 33ms 帧预算的 45%，
+尚未加入渲染时间。当个体数量从 500 增至 2000+ 时，带宽和解析双重超限。
+
+【影响范围】
+移动端用户（占 DAU 的 62%），具体表现为：
+- 帧率跌至 10-15fps（用户反馈"像 PPT"）
+- 低带宽场景（地铁/偏远地区）完全黑屏
+桌面端暂不受影响，但 10K 个体路线图下桌面端同样会触发。
+```
+
+> ⚠️ 如果上述数字目前仍是估算而非实测，**必须在 PRD 中标注「估算」并给出实测计划**，否则 P0 定级缺乏事实依据。
+
+---
+
+## Q3 个体交互模型 ❌
+
+**判定依据**
+
+PRD 完全没有描述哪些个体参与、通过哪些 pub/sub 通道流动。这是项目核心架构约束，缺失意味着实现者无法判断 DeltaFrame 的上下游边界。
+
+**具体缺失**
+
+- 哪个 L1 实体（WorldModel / EntityRegistry）是数据源？
+- L2 State Bridge 是订阅哪个 topic 触发编码的？
+- 编码后的 DeltaFrame 发布到哪个 channel？
+- needle-engine 是唯一消费者，还是还有 replay / debug 消费者？
+- `ack_seq` 背压信号走哪条通道回传？
+
+**修改建议（补充示例）**
+
+```
+【个体交互模型】
+
+参与个体：
+- EntityRegistry（L1）：维护全量世界状态，提供 dirty-set 接口
+- StateBridge（L2）：订阅 dirty-set，执行 DeltaFrame 编码，发布到 WS channel
+- NeedleDeserializer（L3）：消费 WS channel，驱动 needle-engine 场景更新
+- DebugRecorder（L2, 可选）：同时订阅 WS channel，录制回放
+
+Pub/Sub 通道：
+  EntityRegistry  --[dirty_entities: Set<EntityId>]-→  StateBridge
+                     (per-tick, L1内部信号，非DDS)
+
+  StateBridge     --[ws://…/world-stream, binary]-→    NeedleDeserializer
+                     (DeltaFrame binary, 本 PRD 定义的格式)
+
+  NeedleDeserializer --[ack_seq: u64]-→               StateBridge
+                     (WebSocket 上行, 背压控制)
+
+帧触发时序：
+  L1 tick(30Hz) → dirty-set 收集 → StateBridge encode → WS push
+```
+
+---
+
+## Q4 API 设计 ✅（部分）
+
+**判定依据**
+
+协议结构定义详尽，field_mask 位定义清晰，带宽估算有表格支撑，峰值场景也有专项处理。这是 PRD 中最完整的部分。
+
+**具体问题**
+
+缺少 Before/After 代码对比，审核者和实现者无法判断"现在怎么做"与"改后怎么做"的差异边界。
+
+**修改建议（补充 Before/After）**
+
+```typescript
+// ❌ BEFORE：全量 JSON（当前实现）
+interface EntitySnapshot {
+  entities: Array<{
+    id: string;           // UUID string（冗余，36 bytes）
+    pos: [number, number, number];
+    rot: [number, number, number, number];
+    vel?: [number, number, number];
+    attrs?: number[];
+    mesh_ref?: string;
+  }>;
+}
+// 序列化后单帧示例：{"entities":[{"id":"a3f...","pos":[1.2,0,3.4]...}×N]}
+// 1K 个体 ≈ 120KB JSON（含 key 字符串开销）
+
+// ✅ AFTER：DeltaFrame Binary
+// 编码侧（State Bridge, TypeScript/Rust）
+function encodeDeltaFrame(
+  dirty: DirtySet,
+  seq: bigint
+): ArrayBuffer {
+  const buf = new BinaryWriter();
+  buf.writeU64(seq);                          // frame_seq
+  buf.writeU32(Date.now() & 0xFFFFFFFF);     // timestamp_ms
+  buf.writeU16(dirty.created.length);
+  buf.writeU16(dirty.updated.length);
+  buf.writeU16(dirty.destroyed.length);
+  for (const e of dirty.created) writeCreated(buf, e);
+  for (const e of dirty.updated) writeUpdated(buf, e);  // field_mask 按需写
+  for (const id of dirty.destroyed) buf.writeU64(id);
+  return buf.finish();
+}
+
+// 解码侧（needle-engine, TypeScript）
+function decodeDeltaFrame(buf: ArrayBuffer): DeltaFrame {
+  const r = new BinaryReader(buf);
+  const seq = r.readU64();
+  // ... 按 field_mask 条件读取
+}
+```
+
+另外有一个**协议版本字段缺失**的问题需要关注：header 中没有 `protocol_version` 字段。一旦字段定义变更，服务端和客户端无法协商版本，建议在 header 中增加：
+
+```
+header (18 bytes, +2)
+├── protocol_version: u8   // 当前 = 1
+├── flags: u8              // 预留，当前 = 0
+├── frame_seq: u64
+├── timestamp_ms: u32
+└── counts: u16 × 3
+```
+
+---
+
+## Q5 展示层影响 ❌
+
+**判定依据**
+
+PRD 完全没有描述 needle-engine（L3）侧需要做什么来消费 DeltaFrame，以及对最终画面的影响和降级策略。
+
+**具体缺失**
+
+| 问题 | 现状 |
+|---|---|
+| needle-engine 如何处理 `vel` 字段做客户端外推？ | ❌ 无描述 |
+| 丢帧（seq 跳变）时视觉表现是什么？ | ❌ 无降级策略 |
+| `mesh_ref` 变化触发 GLB 切换的加载延迟如何处理？ | ❌ 无 loading 状态设计 |
+| `created[]` 限流（单帧上限 20 个）时用户能看到什么？ | ❌ 无说明 |
+| 背压触发时渲染层是否有视觉反馈？ | ❌ 无说明 |
+
+**修改建议（需补充内容框架）**
+
+```
+【展示层影响（L3-needle-engine）】
+
+1. 客户端外推（vel 字段）
+   当 updated[] 未包含 pos 更新时，needle-engine 使用上一帧 vel × Δt 推算位置，
+   避免因帧率抖动导致视觉卡顿。外推上限 = 3 帧（100ms），超出则冻结到最后已知位置。
+
+2. 丢帧处理
+   检测到 frame_seq 跳变（gap > 1）时：
+   - gap ≤ 3：继续外推，等待下一帧修正
+   - gap > 3：触发全量重同步请求（发送 resync_req 上行消息）
+   - 用户可见：无 loading 遮罩，个体短暂停止移动后自动恢复
+
+3. mesh_ref 切换
+   收到 bit4=1 的 updated[] 时，needle-engine 发起异步 GLB 加载，
+   加载期间保持旧 mesh 显示（不闪烁），加载完成后切换。
+   加载超时（> 3s）：显示默认 fallback mesh。
+
+4. created[] 限流的视觉影响
+   单帧最多 20 个 created[]，剩余排队。
+   用户可见影响：场景初始化时个体批次出现（间隔 33ms），
+   可接受（优于单帧卡顿），无需额外 UI 反馈。
+```
+
+---
+
+## 总体评级
+
+| 维度 | 评级 | 核心问题 |
+|---|---|---|
+| Q1 架构定位 | ✅ 有条件 | 模块归属不明，双 owner 未签字 |
+| Q2 问题陈述 | ❌ | 无当前行为描述，P0 依据缺失，估算未标注 |
+| Q3 个体交互模型 | ❌ | pub/sub 通道完全缺失 |
+| Q4 API 设计 | ✅ 部分 | Before 代码缺失，header 无版本字段 |
+| Q5 展示层影响 | ❌ | 丢帧/外推/限流的 L3 行为完全未描述 |
+
+**结论：不通过准入，需返工后重审。**
+
+优先级建议：先补 Q2（P0 定级依据）和 Q3（pub/sub 边界），这两项是其他条目的前提。Q4 补 Before 代码和版本字段后可单独复审，Q5 可在 Q3 确定后并行补写。

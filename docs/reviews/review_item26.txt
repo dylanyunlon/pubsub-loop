@@ -1,0 +1,108 @@
+# PRD审核报告
+
+**工单**: BUG: `tensor_parallel::neuron_pipeline_parallel::launcher::triple_chevron` in headers for non-Neuron compilers
+**优先级**: P1 🟡 | **模块**: `world::component`
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ❌
+
+**判定依据**：定位表述自相矛盾，未通过。
+
+工单标题描述的是一个**编译器头文件污染 bug**（triple_chevron 宏/调用在非 Neuron 编译器下被错误引入），属于 `tensor_parallel` 层的**平台隔离缺陷**。
+
+但正文将其归入 `world::component` 模块并套用"个体能力定义、平台适配"框架，两者的问题边界**完全不重叠**。`triple_chevron` 是 AWS Neuron SDK 特有的 kernel launch 语法（`<<<...>>>`的 Neuron 变体），其修复目标是**编译期符号隔离**，而非 world 模型的运行时行为。
+
+**缺失**：未说明 `tensor_parallel::neuron_pipeline_parallel` 与 `world::component` 的依赖链。
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定依据**：bug 本质未被陈述，无法驱动修复。
+
+合格的 P1 BUG 工单应包含：
+
+- **复现路径**：在哪个编译器（GCC/Clang/NVCC）、哪个 flag 组合下触发
+- **失败表现**：编译错误 / 链接错误 / 运行时 UB，错误消息原文
+- **影响范围**：哪些 translation unit 受到污染
+
+现有正文仅有功能描述套话，**一条具体的错误信息都没有**。对于"header 中出现 non-Neuron 编译器不支持的语法"这类 bug，问题陈述是修复的全部输入，此处完全缺失。
+
+---
+
+### Q3 个体交互 ⚠️ 条件通过
+
+**判定依据**：模型结构合理，但与本 bug 无关联。
+
+交互表中的三类个体（`StateProcessorIndividual` / `SchedulerIndividual` / `MonitorIndividual`）及 pub/sub 拓扑图本身设计清晰，符合系统规范。
+
+但 `triple_chevron` 的头文件污染问题发生在**编译期**，与这三类个体的运行时交互路径**无交集**。若该 bug 不修复，受影响的是能否成功编译出包含 Neuron 路径的 translation unit，而非个体间的消息传递逻辑。
+
+**结论**：个体交互模型可保留作为上下文背景，但不能作为本 bug 的验收依据。
+
+---
+
+### Q4 API 设计 ❌
+
+**判定依据**：API 与 bug 修复目标脱节。
+
+提供的 `world::component::Processor` API 是一个运行时处理器接口，对应的修复动作应该是**头文件守卫 / 条件编译宏 / CMake target 隔离**，例如：
+
+```cpp
+// 期望修复形式
+#ifdef ENABLE_NEURON
+#  include "neuron_pipeline_parallel/launcher.h"
+#endif
+```
+
+或 CMake 层：
+
+```cmake
+target_link_libraries(neuron_target PRIVATE neuron_pipeline_parallel)
+# 而非 PUBLIC/INTERFACE 传染给非 Neuron target
+```
+
+现有 API surface 无法验证 `triple_chevron` 是否被正确隔离，**Acceptance Criteria 中也没有一条针对编译器兼容性的检查项**（如 `cmake -DENABLE_NEURON=OFF` 干净编译）。
+
+---
+
+### Q5 展示层影响 ✅
+
+**判定依据**：边界声明到位，无越权描述。
+
+正文将展示层影响限定为"needle-tools GLB 场景中个体的行为多样性"，属于间接下游影响的合理描述，未对渲染层提出具体变更要求。展示层无需为此 bug 修复承担额外工作，判定通过。
+
+---
+
+## 总体判定
+
+```
+Q1 架构定位   ❌
+Q2 问题陈述   ❌  
+Q3 个体交互   ⚠️
+Q4 API设计    ❌
+Q5 展示层     ✅
+
+总体: ❌ 不通过准入
+```
+
+### 打回理由
+
+这是一份**用 feature 模板包装的 bug 工单**。`triple_chevron` 头文件污染是一个具体、可测量的编译期缺陷，修复路径清晰（条件编译隔离 + CMake visibility 收紧），但当前 PRD 将其淹没在世界模型的架构描述中，导致：
+
+1. 没有人知道**在哪台机器、用什么命令能复现这个 bug**
+2. 验收标准无法验证 bug 是否真正被修复
+3. 负责人拿到这份文档无法开始工作
+
+### 最小修复要求（返工清单）
+
+| 项 | 需补充内容 |
+|---|---|
+| 复现步骤 | 编译器版本 + 报错原文 + 最小复现 CMake 配置 |
+| 根因定位 | 哪个头文件的哪一行引入了 `triple_chevron`，include 链路 |
+| 修复方案 | `#ifdef` 守卫 or CMake `PRIVATE` visibility，二选一并说明理由 |
+| 验收标准 | 新增：`-DENABLE_NEURON=OFF` 编译无错误/警告，CI 矩阵覆盖 GCC + Clang |
+| 模块归属 | 从 `world::component` 更正为 `tensor_parallel::neuron_pipeline_parallel` |

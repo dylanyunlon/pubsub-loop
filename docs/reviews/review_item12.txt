@@ -1,0 +1,141 @@
+# pub/sub-loop PRD 审核报告
+
+---
+
+## Q1 架构定位 ❌
+
+**判定理由：** 架构定位存在根本性混淆。
+
+标题声明的是 `tensor_parallel::count_if / copy_if` 的性能回归（属于**并行算法层**的 bug），但 PRD 正文将其定位为 `world::profiler` 模块缺陷。这是两个不同的命名空间、不同的抽象层级：
+
+| 维度 | 标题所指 | 正文所写 |
+|---|---|---|
+| 命名空间 | `tensor_parallel::` | `world::profiler` |
+| 问题性质 | SIMD/并行算法性能回归 | 世界模型性能分析工具 |
+| 修复层级 | L0/底层算法库 | L1 世界模型 |
+
+**修改建议：**
+- 二选一并对齐：若 bug 根源确实是 `tensor_parallel` 算法慢，则主体应是修复该算法，`world::profiler` 仅作为**验证工具**出现
+- 或明确说明：`world::profiler` 调用了 `tensor_parallel::count_if`，后者性能不达标，本 PRD 范围是**在 profiler 层引入 workaround 或封装替代实现**
+- 补充受影响平台：Grace (ARM) / x86 需分别列出，因修复策略不同
+
+---
+
+## Q2 问题陈述 ❌
+
+**判定理由：** 缺少可量化的问题基线，无法判断验收。
+
+现状描述只有标题中的 "10x+ / 20x+ slower"，正文中完全没有重述，且缺少：
+- 具体测量数据（输入规模、测试平台、编译器版本）
+- 对 pub/sub 管道的**实际影响**（延迟增加多少 ms？帧率从多少降到多少？）
+- 复现步骤
+
+**修改建议：**
+
+在 `## Description` 下新增 `### 问题基线` 小节，格式示例：
+```
+| 平台       | 函数                        | libstdc++ (ns) | tensor_parallel (ns) | 倍率 |
+|------------|----------------------------|---------------|---------------------|------|
+| Grace ARM  | count_if, N=1M             | 120           | 1400                | 11.7x|
+| x86 Zen4   | copy_if, N=1M              | 95            | 2100                | 22x  |
+复现：cmake -DBENCHMARK=ON && ./bench_tensor_parallel
+```
+Acceptance Criteria 中对应补充：**count_if / copy_if 性能不低于 libstdc++ 的 80%**（当前写法"不低于基线"语义模糊）
+
+---
+
+## Q3 个体交互 ⚠️ 条件通过
+
+**判定理由：** 结构合理，但角色职责与本 bug 的关联性不足。
+
+三个个体的划分（StateProcessor / Scheduler / Monitor）是合理的 pub/sub-loop 建模，pub/sub 拓扑图也清晰。但存在两个问题：
+
+1. `MonitorIndividual` 通过"诊断通道"接收数据，但**没有说明它如何暴露 tensor_parallel 层的性能异常**——这是本 bug 的核心监控路径，却是空白
+2. `SchedulerIndividual` 的 CRoutine tick 频率未定义，无法判断性能回归是否会触发调度抖动
+
+**修改建议：**
+- 在表格新增一列"异常处理"，说明当 `count_if` 超时时各个体的降级行为
+- 补充：`MonitorIndividual` 订阅 `channel://world/profiler/perf_alert`，当单次 tick 耗时 > **阈值 X ms** 时触发告警
+- 明确 Scheduler tick 间隔（如 16ms / 60Hz），作为性能 SLA 的约束上界
+
+---
+
+## Q4 API 设计 ❌
+
+**判定理由：** API 与 bug 修复目标脱节，且存在设计缺陷。
+
+```cpp
+// 当前设计的问题：
+struct Config { bool enable_simd=true; };  // ❌ 1. simd 是 workaround 开关还是功能开关？语义不清
+class Processor {
+    StateView process_tick(...);  // ❌ 2. 返回 StateView 但无生命周期说明，悬空引用风险
+    PerformanceStats get_stats(); // ❌ 3. 非 const 修饰符缺失（已有 const 但需确认线程安全）
+};
+Config::from_json(std::string_view p); // ❌ 4. 参数名 p 无意义，且无错误返回机制（抛异常？返回optional？）
+```
+
+更根本的问题：整套 API 没有任何地方暴露 `tensor_parallel` 的**替代路径**，如果 bug 修复是"换掉慢的实现"，API 层应该有所体现。
+
+**修改建议：**
+
+```cpp
+namespace world::profiler {
+
+enum class SimdBackend { Auto, TensorParallel, Libstdcxx, Neon };
+
+struct Config {
+    size_t individual_capacity = 10000;
+    SimdBackend backend = SimdBackend::Auto;  // 明确后端选择语义
+    size_t alignment = 64;
+    static std::expected<Config, std::string> from_json(std::string_view path); // 显式错误处理
+};
+
+class Processor {
+public:
+    explicit Processor(Config c);
+    [[nodiscard]] bool initialize();
+    // 明确 StateView 生命周期：owned by Processor，tick 后失效
+    StateView process_tick(const StateBuffer& s, uint64_t tick);
+    [[nodiscard]] PerformanceStats get_stats() const;  // 需文档说明线程安全性
+    BackendBenchmark run_backend_comparison() const;   // 新增：暴露性能对比，用于回归验证
+};
+
+} // namespace world::profiler
+```
+
+---
+
+## Q5 展示层影响 ⚠️ 条件通过
+
+**判定理由：** 提及了 needle-tools GLB 渲染帧率，但缺乏量化链路。
+
+"确保 needle-tools GLB 渲染达到目标帧率"作为目标是正确的 L3 层关联，但：
+- **目标帧率是多少？** 30fps / 60fps？
+- **profiler 性能与帧率的传导路径**未说明：`tensor_parallel` 慢 → profiler tick 延迟增加 X ms → 渲染调用阻塞 → 掉帧，这条链路需要显式写出
+- Sub-tasks 中没有"展示层回归测试"
+
+**修改建议：**
+- 在 Acceptance Criteria 新增：`[ ] needle-tools 在 Grace/x86 平台渲染 GLB 场景帧率 ≥ 60fps（当前因 profiler 延迟导致降至 N fps）`
+- Sub-tasks 新增：`[ ] L3 展示层集成验证（needle-tools 帧率回归测试）`
+- 可选：在个体交互模型中增加 `RenderIndividual` 作为 `MonitorIndividual` 的下游消费者
+
+---
+
+## 总体判定
+
+```
+❌ 不通过 — 需修订后重审
+```
+
+| 维度 | 评分 | 核心问题 |
+|---|---|---|
+| Q1 架构定位 | ❌ | 命名空间/层级错位，tensor_parallel vs world::profiler 未对齐 |
+| Q2 问题陈述 | ❌ | 无可量化基线，验收标准模糊 |
+| Q3 个体交互 | ⚠️ | 结构合理但监控异常路径缺失 |
+| Q4 API 设计 | ❌ | 无后端切换语义，StateView 生命周期不安全，错误处理缺失 |
+| Q5 展示层影响 | ⚠️ | 目标帧率未定义，传导链路未说明 |
+
+**最高优先修复项（阻断合并）：**
+1. 明确本 PRD 的修复边界：是修 `tensor_parallel` 本身，还是在 `world::profiler` 层绕过它
+2. 补充问题基线数据表 + 可复现的 benchmark 命令
+3. API 增加 `SimdBackend` 枚举和 `std::expected` 错误处理

@@ -1,0 +1,145 @@
+# PRD 审核报告
+
+**工单**: [BUG]: Remove warning suppressions from TensorParallel build system
+**审核框架**: pub/sub-loop 项目五准入问题
+
+---
+
+## Q1 — 架构定位
+
+**判定**: ❌
+
+**问题**:
+标题明确是 `TensorParallel build system` 的 warning suppression 清理，属于构建系统卫生问题（build hygiene）。但 PRD 正文将其强行套入 `world::tools` 缺陷修复框架，两者之间**没有任何实质性关联路径**。
+
+`TensorParallel` 是 ML 训练并行化组件，与 L1 世界模型的 `pub/sub-loop` 架构层级无对应关系——它既不是 DDS/RTPS 广播节点，也不挂载于 `world::` 命名空间。
+
+**修改建议**:
+- 方案A（推荐）：将此工单**降级为独立的构建系统技术债工单**，从 pub/sub-loop PRD 模板中剥离，使用纯 build-system 模板，标注影响范围为 `ci/build/tensor_parallel`
+- 方案B：若 TensorParallel 确实是 world model 推理后端，需在 PRD 中**明确写出** TensorParallel → L1 世界模型推理层的依赖拓扑，并说明 warning suppression 如何导致 L1 状态更新错误
+
+---
+
+## Q2 — 问题陈述
+
+**判定**: ❌
+
+**问题**:
+BUG 工单缺少最基本的缺陷三要素：
+
+| 要素 | 现状 |
+|---|---|
+| 症状 (Symptom) | ❌ 未描述哪些 warning 被抑制、抑制方式（`-Wno-*` / `#pragma` / CMake flag） |
+| 根因 (Root Cause) | ❌ 未说明为何当初引入 suppression，是掩盖了真实 bug 还是 false positive |
+| 影响范围 (Impact) | ❌ 未说明 suppression 是否掩盖了内存安全、UB、线程竞争等实质性缺陷 |
+
+"Remove warning suppressions" 本身是**解决方案描述**，不是问题陈述。
+
+**修改建议**:
+```
+## Problem Statement
+- 受影响文件：`cmake/TensorParallel.cmake`, `src/tensor_parallel/*.cpp`
+- 当前抑制的 warning 类型：`-Wno-unused-variable`, `-Wno-sign-compare`（示例，需实际填写）
+- 引入原因：[历史原因/第三方库兼容/快速合并压力]
+- 潜在掩盖风险：[是否存在 TSAN/ASAN 已报告但被忽略的问题]
+- 修复目标：使 TensorParallel 在 `-Wall -Wextra -Werror` 下零 warning 编译
+```
+
+---
+
+## Q3 — 个体交互
+
+**判定**: ❌
+
+**问题**:
+个体交互模型表格（`StateProcessorIndividual` / `SchedulerIndividual` / `MonitorIndividual`）与工单主题**完全无关**。
+
+清理 TensorParallel 的 warning suppression 是一个构建系统操作，不产生任何新的 pub/sub 消息流，不改变任何个体的状态机行为，不影响 `channel://world/tools/update` 的数据流向。
+
+当前的交互模型是从其他 PRD **直接复制粘贴**的模板填充，没有针对本工单做任何定制。
+
+**修改建议**:
+- 若本工单确实无个体交互影响，**明确声明**：`本工单为构建系统变更，不引入新的个体交互路径，个体行为不变`
+- 若 warning 修复后**暴露了潜在 bug** 并需要修复，则将修复内容拆分为独立工单，该子工单再描述个体交互影响
+- 删除当前无关的交互表格和 pub/sub 数据流图
+
+---
+
+## Q4 — API 设计
+
+**判定**: ❌
+
+**问题**:
+PRD 中设计了全新的 `world::tools::Processor` API，包含 `Config`、`process_tick()`、`StateView` 等接口。但工单标题是**移除 warning suppression**，是纯构建变更（`-Werror` 合规），**不应引入任何新 API surface**。
+
+具体矛盾点：
+- `Config::enable_simd` / `individual_capacity` 与 TensorParallel warning 清理没有逻辑联系
+- `process_tick(StateBuffer, uint64_t)` 是全新的状态处理接口，超出 BUG 修复范畴
+- 若此 API 是已有接口的文档补充，PRD 中无任何说明
+
+**修改建议**:
+- **BUG 修复工单不应新增 API**，删除 API Surface 章节，或将 API 新增拆分为独立 Feature 工单
+- 若 warning 修复涉及函数签名变更（如修正 `int`/`size_t` 混用导致的 sign-compare warning），则仅描述**变更的具体签名 diff**：
+```cpp
+// Before (suppressed warning)
+int process(int count);
+// After (warning-clean)
+size_t process(size_t count);
+```
+
+---
+
+## Q5 — 展示层影响 (L3 needle-tools)
+
+**判定**: ❌
+
+**问题**:
+PRD 在 "个体输出动态关联" 中声称 `tools 保障了从源码到 GLB 动态输出的完整交付链路，包括……needle-tools 集成测试`，但：
+
+- 未提供 TensorParallel → GLB 输出的实际数据流路径
+- needle-tools 的哪个具体 panel / visualizer 受影响没有指明
+- `warning suppression 清理` 与 GLB 动态输出的关联机制完全缺失（是影响编译产物的行为？还是影响运行时精度？）
+
+验收标准中的 `个体动态输出场景验证通过` 是空洞描述，无法被 QA 执行。
+
+**修改建议**:
+```
+## L3 展示层影响评估
+影响类型: □ 无影响（构建变更不影响运行时输出）
+         □ 有影响，具体场景: ___
+
+若无影响，needle-tools 回归测试范围:
+- 执行现有 needle-tools smoke test suite，确认 GLB 输出 bit-exact 一致
+- 对比修复前后的 profiler overlay 数据无差异
+```
+
+---
+
+## 总体判定
+
+**结论**: ❌ **不予准入，需重写**
+
+```
+Q1 架构定位    ❌  主题与框架错位，TensorParallel ≠ world::tools
+Q2 问题陈述    ❌  缺陷三要素全部缺失，解决方案当问题陈述写
+Q3 个体交互    ❌  复制粘贴模板，与工单主题零关联
+Q4 API 设计    ❌  BUG 修复工单引入全新 API，范围严重越界
+Q5 展示层影响  ❌  关联路径未建立，验收标准不可执行
+
+通过率: 0/5
+```
+
+**核心诊断**: 这是一个**模板滥用**的典型案例——将一个简单的构建系统清理任务（`-Werror` 合规化）强行填入 pub/sub-loop PRD 模板，导致五个维度全部失真。工单实际工作量可能只是 1-2天的构建脚本修改，但当前 PRD 描述的是一个完整的新功能子系统。
+
+**推荐处置路径**:
+
+```
+当前工单 → 拆分为:
+  ├── [CHORE] TensorParallel: -Werror compliance cleanup
+  │     模板: build-system chore
+  │     预估: 1-3天
+  │
+  └── （可选）若发现被掩盖的真实 bug →
+        [BUG] TensorParallel: <具体 bug 描述>
+              此时才需要评估 pub/sub-loop 影响
+```

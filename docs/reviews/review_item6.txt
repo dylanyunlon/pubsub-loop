@@ -1,0 +1,187 @@
+# PRD 审核报告
+
+**标题**: Rely more on the driver for input checks to reduce latency
+**优先级**: P1 🟡 | **模块**: 未标注
+
+---
+
+## Q1 架构定位 ❌
+
+**判定**: 不合格
+
+**问题**: 模块字段为 `?`，正文未声明该组件在三层架构中的归属。
+
+**应写什么**:
+
+```
+模块: L1 → transport / node（世界运行时 Neuron_SP 的 kernel launch 路径）
+
+架构定位:
+- 主体在 L1 node 层：launch_individual_sync() 属于节点间
+  状态同步的底层 transport 原语
+- 涉及 L1 common/base：WORLD_CHECK / WORLD_ASSERT_DEBUG 宏定义所在层
+- 不直接触及 L2 决策层，但 L2 scheduler/croutine 依赖
+  L1 热路径延迟作为调度时钟基准，间接受益
+- 不触及 L3 展示层
+```
+
+---
+
+## Q2 问题陈述 ❌
+
+**判定**: 不合格
+
+**问题**: 正文只有一段描述，缺少"当前行为 → 为什么有问题 → 影响范围"的完整展开，且问题的边界模糊（哪些校验是真正冗余的？怎么确认驱动已覆盖？）。
+
+**应写什么（补足3-5段）**:
+
+```
+【当前行为】
+launch_individual_sync() 在每次 kernel 提交前，于 Neuron_SP
+用户态顺序执行 4 类校验：指针非空、128B 对齐、n ≤ max_individual_count()、
+n % ISG_SIZE == 0。前三类与 GPU Driver（≥535）validation layer
+执行的检查语义完全等价，在同一调用链上被执行两次。
+
+【为什么有问题】
+在 N=1M 个体的热路径下，重复校验占用 ~24 µs（42-18），占总
+launch 开销 57%。TensorParallel 场景下每个 ISG 分片均触发一次
+launch，100 个分片即浪费 2.4 ms/帧，超过 PipelineParallel
+bubble 时间窗口，直接推高个体状态广播的端到端延迟。
+
+【为什么之前这样做】
+Neuron_SP 早期（Driver < 470）驱动 validation 不稳定，用户态
+兜底校验是合理的防御性策略。Driver 535 起 validation layer
+进入 GA，该历史背景已消失但代码未跟进清理。
+
+【影响范围】
+直接：所有调用 launch_individual_sync() 的 L1 node 同步路径；
+间接：L2 scheduler 依赖此延迟做 croutine 时间片分配，延迟
+降低后调度精度可提升；L2 statistics/profiler 的热路径采样
+基线需随之更新。不影响 L3 展示层帧率（StateBridge 位于
+快照合并之后）。
+
+【风险】
+移除用户态校验后，Release build 的非法输入错误将推迟到驱动
+层报告，错误信息质量取决于驱动版本；在 Driver < 535 的环境
+下等价于裸奔，需 CI 强制校验驱动版本门控。
+```
+
+---
+
+## Q3 个体交互 ❌
+
+**判定**: 不合格
+
+**问题**: 正文完全没有提及 pub/sub 通道，`IndividualState` 的生产者/消费者身份不明，DDS/RTPS topic 无从追溯。
+
+**应写什么**:
+
+```
+【涉及个体】
+- Publisher 个体：持有 IndividualState* 数组的 TensorParallel
+  分片节点，负责 kernel launch 后将状态写入共享显存
+- Subscriber 个体：PipelineParallel 下游节点，轮询共享显存
+  完成世界快照融合
+
+【pub/sub 通道】
+Topic: /world/individual/state_sync
+  - 类型: IndividualStateBatch（含 n 个 IndividualState）
+  - QoS: BEST_EFFORT，高频（目标 <20 µs/launch）
+  - Publisher: TensorParallel worker node × ISG_COUNT
+  - Subscriber: WorldSnapshot aggregator（L1 mainboard）
+
+Topic: /world/runtime/kernel_event（新增建议）
+  - 类型: KernelLaunchEvent（launch_id, latency_us, n）
+  - 用途: 供 L2 profiler/statistics 订阅，替代当前硬编码
+    在校验代码里的埋点日志
+  - Publisher: launch_individual_sync() 完成后发布
+  - Subscriber: L2 profiler, L2 sysmo
+
+【本 PRD 的改动对通道的影响】
+通道定义本身不变；改动仅影响 Publisher 侧的
+pre-launch CPU 开销，消息格式/频率/QoS 均不变。
+```
+
+---
+
+## Q4 API 设计 ✅
+
+**判定**: 合格（本 PRD 最完整的部分）
+
+**已有**：Before/After 代码对比清晰，延迟数据表格具体，子任务拆分合理。
+
+**小幅补强建议**（非否决项）:
+
+```cpp
+// 建议补充：驱动 validation layer 的启用方式，
+// 让审阅者知道"驱动自动报告"不是魔法
+
+// CMakeLists.txt / build 配置
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  target_compile_definitions(neuron_sp PRIVATE
+    WORLD_ENABLE_DRIVER_VALIDATION=1)
+  # 对应运行时：
+  # NeuronDevice::set_validation_level(ValidationLevel::FULL);
+endif()
+
+// 同时建议补充：audit 后的完整清单（即使是占位表格）
+// | 校验项              | 驱动覆盖? | 保留? | 理由          |
+// |---------------------|-----------|-------|---------------|
+// | 指针非空            | ✅ ≥535   | 移除  | —             |
+// | 128B 对齐           | ✅ ≥535   | 移除  | —             |
+// | n ≤ max_count       | ✅ ≥535   | 移除  | —             |
+// | n % ISG_SIZE == 0   | ❌        | 保留  | 业务语义      |
+// | state.version 单调  | ❌        | 保留  | 个体状态一致性|
+```
+
+---
+
+## Q5 展示层影响 ❌
+
+**判定**: 不合格
+
+**问题**: PRD 完全未提展示层，即使影响为零也需要显式声明并给出推导路径。
+
+**应写什么**:
+
+```
+【对 L3 needle-engine / GLB 的影响】
+
+直接影响：无。
+本改动位于 L1 kernel launch 热路径（CPU 用户态），
+StateBridge 消费的是 L1 mainboard 输出的世界快照，
+快照内容（IndividualState 字段）不变，GLB 渲染数据
+格式不变。
+
+间接影响（正向）：
+热路径延迟从 ~42 µs 降至 ~18 µs，世界快照刷新率
+在高个体密度场景（N≥1M）下预计提升，StateBridge
+向 needle-engine 推送的帧间隔更稳定，可减少 L3
+插值抖动（jitter）。
+
+需要同步更新的展示层配置：
+- StateBridge 的 snapshot_interval_us 参数建议从
+  当前保守值（按 42 µs 基线设置）调小，充分利用
+  新的延迟余量；具体数值待 microbenchmark 结果确认后
+  由 L3 团队评估。
+
+验证要求：
+- 回归测试：needle-engine 渲染的个体位置/速度插值
+  在 before/after 下视觉一致（截图 diff < 1%）
+```
+
+---
+
+## 总体判定
+
+> ## ❌ 需修改
+
+| 维度 | 得分 | 核心缺口 |
+|------|------|----------|
+| Q1 架构定位 | ❌ | 模块字段空白，L1归属未声明 |
+| Q2 问题陈述 | ❌ | 仅一段，缺历史背景与影响范围拆解 |
+| Q3 个体交互 | ❌ | 无任何 pub/sub topic 描述 |
+| Q4 API设计 | ✅ | 最完整，补充 audit 清单和 validation 启用方式即可 |
+| Q5 展示层影响 | ❌ | 完全缺失，即使无影响也需显式说明 |
+
+**核心问题**: 这是一份**优秀的技术 ticket**，但不是合格的 PRD。它清楚地描述了"怎么做"，但没有描述"这个改动在系统里的位置、对谁有影响、系统级后果是什么"。按上述模板补全 Q1/Q2/Q3/Q5 后可进入下一轮评审。

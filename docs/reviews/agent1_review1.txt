@@ -1,0 +1,160 @@
+# PRD 审核报告：[L3-001] State Bridge 服务
+
+---
+
+## Q1 架构定位 ✅ 通过
+
+**判定理由**
+
+PRD 明确标注"跨层服务：Layer 2 → Layer 3 的唯一通道"，并在数据流图中清楚展示了 `data::WorldView (C++)` → `StateBridge` → `WebSocket` → `needle-engine` 的路径。
+
+**一个小缺口**（不影响通过）：`模块` 字段填的是 `?`。建议填写 `layer3/state_bridge`，以便在 monorepo 中定位源码目录。这不是阻塞项，但在提交前应补全。
+
+---
+
+## Q2 问题陈述 ❌ 不通过
+
+**判定理由**
+
+PRD 只用两句话描述了问题：
+
+> "Layer 2 的输出是 C++ 进程内的内存结构，浏览器无法直接访问" → "用户看到空白场景"
+
+这是结论，不是问题陈述。要求是 3–5 段，描述**当前行为 → 为什么有问题 → 影响范围**，三者缺一不可。目前完全缺失"当前行为"和"影响范围"两个维度。
+
+**具体应该写什么**
+
+```
+【当前行为 - 第1段】
+当前 Layer 3 没有任何桥接组件。needle-engine 在浏览器端
+启动后，发起 WebSocket 连接请求，但后端没有对应的服务端
+监听，连接立即被拒绝（Connection Refused）。needle-engine
+只能渲染初始化时静态加载的 GLB 骨架，场景中没有任何动态
+个体出现。
+
+【为什么有问题 - 第2段】
+data::WorldView 是一个进程内共享内存结构，由 Layer 2 的
+scheduler 在每个调度周期（目标 20ms）更新一次。这是 C++ 
+ABI，浏览器的 JavaScript 运行时没有任何机制直接读取进程
+外内存。两者之间必须有一个协议转换层，否则 Layer 2 的所
+有计算结果对 Layer 3 永远不可见。
+
+【影响范围 - 第3段】
+这不是某个功能缺失，而是 Layer 3 整体功能的前提条件。
+所有依赖动态世界状态的 L3 功能（个体可视化 L3-010、选
+中高亮 L3-011、轨迹回放 L3-020 等）在 StateBridge 上线
+前均无法开发或测试，因为它们的数据入口不存在。
+```
+
+---
+
+## Q3 个体交互模型 ❌ 不通过
+
+**判定理由**
+
+这是本 PRD 最严重的缺口。PRD 完全没有回答"涉及哪些个体""通过哪些 pub/sub 通道通信"。StateBridge 作为 Layer 2 → Layer 3 的唯一通道，它的上游是什么、下游是谁、以什么身份参与 pub/sub 生态，全部空白。
+
+**具体应该写什么**
+
+```
+【上游：StateBridge 如何获取 WorldView】
+StateBridge 本身不是一个 DDS publisher，它是 Layer 2 内
+的一个 WorldView 消费者（reader）。它通过 data::WorldView
+提供的快照接口轮询（pull），而非通过 DDS topic 订阅（因
+为 WorldView 本身已经是融合后的聚合视图，不是单个个体
+的原始广播）。
+
+轮询频率：与 StateBridge 的目标帧率绑定（初期 30fps = 
+33ms 轮询间隔）。
+
+【被桥接的个体类型】
+StateBridge 透传 WorldView 中所有"可见"个体，初期包括：
+- Pose 个体（位置 + 姿态，广播 topic: /world/pose/<id>）
+- Vehicle 个体（车辆属性，广播 topic: /world/vehicle/<id>）
+可见性过滤规则在 DeltaFrame 协议（L3-002）中定义，此处
+不重复。
+
+【下游：needle-engine 的身份】
+needle-engine 是纯消费者，通过 WebSocket 接收 DeltaFrame，
+不向后端发布任何个体状态。它发送的唯一上行消息是 ACK
+（确认序号），用于流量控制，不参与 pub/sub 拓扑。
+```
+
+---
+
+## Q4 API 设计 ❌ 不通过
+
+**判定理由**
+
+PRD 提供了目标态 API（After），但没有 Before。PRD 要求"当前 API 是什么样 → 修改后变成什么样"的对比。
+
+然而这里存在一个语义歧义需要先澄清：**StateBridge 是全新组件，根本不存在"当前 API"**，因此字面意义上的 Before/After 无法成立。这不是 PRD 作者的错，但 PRD 没有主动处理这个歧义，读者会困惑。
+
+**具体应该写什么**
+
+```
+【Before：调用方当前的处理方式】
+// 当前（无 StateBridge 时）：Layer 3 初始化时直接读取
+// 一次性静态快照，之后无任何更新机制。
+// needle-engine 侧的伪代码：
+async function initScene() {
+  const snapshot = await fetch("/api/static_snapshot");
+  // 仅在启动时加载一次，运行期不再更新
+  scene.loadFromSnapshot(snapshot);
+}
+
+// Layer 2 侧：WorldView 更新后无任何通知机制
+worldView.update(newFrame); // 更新丢失，无人消费
+
+【After：引入 StateBridge 后】
+// C++ 侧（本 PRD）：
+class StateBridge {
+  void attachWorldView(const data::WorldView& view);
+  DeltaFrame computeDelta(uint64_t client_ack_seq);
+  void onClientConnect(WebSocketConnection& conn);
+  void onClientAck(uint64_t client_id, uint64_t ack_seq);
+};
+
+// needle-engine 侧（配合改动，应在 L3-002 中详细描述）：
+const ws = new WebSocket("ws://localhost:9090/state");
+ws.onmessage = (event) => {
+  const delta = DeltaFrame.decode(event.data);
+  scene.applyDelta(delta);
+  ws.send(JSON.stringify({ ack: delta.seq }));
+};
+```
+
+此外，`computeDelta` 的签名有一个设计问题需要决策：它是**主动轮询**（由内部 timer 调用）还是**按需调用**（由 WebSocket 事件驱动）？当前签名暗示是后者，但 PRD 没有说明调用者是谁，建议补充调用时序图或至少一段文字说明。
+
+---
+
+## Q5 展示层影响 ✅ 通过（有条件）
+
+**判定理由**
+
+PRD 清楚说明了对 needle-engine 的影响：
+
+- 无 StateBridge → 空白场景
+- 有 StateBridge → 接收 DeltaFrame 并渲染动态个体
+
+**但有两个遗留问题需要在关联 PRD 中处理**（不阻塞本 PRD，但需明确追踪）：
+
+1. **DeltaFrame 的 needle-engine 解析侧** 完全依赖 L3-002，本 PRD 只说"协议在 L3-002 中定义"，但没有说明如果 L3-002 延期，本 PRD 的验收标准如何调整。建议在依赖项中加注：`L3-002 是本 PRD 验收的前置条件，L3-002 未完成则本 PRD 的端到端验收无法执行`。
+
+2. **GLB 模型与动态状态的绑定关系** 未提及。needle-engine 接收到一个个体的位置更新后，如何知道该个体对应哪个 GLB 节点？这个映射机制（个体 ID → GLB node name）应在本 PRD 或 L3-002 中明确归属，当前处于真空状态。
+
+---
+
+## 总体判定
+
+### ⚠️ 需修改（不需重写）
+
+| 问题 | 判定 | 阻塞 |
+|------|------|------|
+| Q1 架构定位 | ✅ | — |
+| Q2 问题陈述 | ❌ | 是 |
+| Q3 个体交互模型 | ❌ | 是 |
+| Q4 API 设计（Before/After + 调用时序） | ❌ | 是 |
+| Q5 展示层影响 | ✅（有条件） | 否 |
+
+**核心缺口总结**：PRD 的架构方向和目标是清晰的，但它跳过了"描述现状"这一步，直接写解决方案。对于一个全新组件，"现状"不是"没有这个类"，而是**没有它时系统的实际行为**以及**调用方被迫采用的 workaround**。补全 Q2/Q3/Q4 的现状描述后，这份 PRD 可以直接通过准入。

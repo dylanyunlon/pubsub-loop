@@ -1,0 +1,188 @@
+## PRD审核报告
+
+**标题**: [BUG]: RLE doesn't support discard iterator
+**优先级**: P1 🟡 | **模块**: ? *(首个问题)*
+
+---
+
+### Q1 架构定位 ❌
+
+**判定**: 不通过
+
+**问题**: 模块字段填写为 `?`，PRD 正文未明确声明该 BUG 归属哪一层、哪个模块。
+
+**应写什么**:
+
+```
+模块: L1 → transport / message / io（三选一，需确认）
+
+定位说明:
+RLE 是世界状态序列的编码原语，属于 L1（世界模型）的传输与存储基础设施。
+具体挂载点:
+- 主路径: L1::transport — 个体状态广播前的流压缩
+- 备选路径: L1::message — 消息体内的状态载荷压缩
+- 排除 L2/L3: 决策层和展示层不直接持有 GPU 内核，RLE 内核
+  (ISG/IPU/Neuron_SP) 是纯 L1 计算原语
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定**: 不通过
+
+**问题**: 有"当前行为"和"影响"，但三段式不完整——缺少"为什么有问题"的因果链，且影响范围描述停留在 GPU 术语层面，未关联到世界模型的个体/快照业务语义。段落数为 2 段，未达到 3-5 段要求。
+
+**应写什么（补足为 4 段）**:
+
+```
+【当前行为 - 第1段】
+RLE encode/decode API 的输出参数 d_values_out / d_counts_out 
+仅接受真实设备指针（raw pointer），模板推导不接受任何迭代器包装类型。
+当调用方传入非指针类型时，编译期报错，无法绕过。
+
+【为什么有问题 - 第2段（现缺失）】
+RLE 在 Neuron_SP 流水线中被用于两类场景：
+  A. 完整压缩：需要 values + counts，用于 DDS/RTPS 广播前打包
+  B. 统计模式：只需 d_num_runs（run 段数），用于动态决定下游
+     缓冲区大小（two-pass 模式）
+场景 B 中，调用方被迫传入一个真实的 d_values_out 缓冲区，
+该缓冲区仅为满足 API 签名而存在，其内容在下一行即被废弃。
+这是 API 设计的语义缺口：API 无法表达"我不需要这个输出"的意图。
+
+【影响范围 - 第3段（现已有但需展开）】
+直接影响：
+- ISG(warp) 在写出阶段产生无效内存事务，占用 L2 Cache 带宽
+- IPU(SM) 须为废弃缓冲区分配寄存器，降低 occupancy
+- Neuron_SP 调度器须为 d_values_out 分配临时设备内存，
+  在高频个体状态更新场景（>10k 个体/帧）下造成显著分配压力
+
+间接影响（现完全缺失）：
+- 世界快照融合器（WorldView Aggregator）在执行 two-pass RLE
+  时，第一 pass 的临时 d_values_out 分配与释放产生碎片，
+  影响后续 GLB 状态序列化的内存连续性
+- 订阅者侧若并发执行多路 RLE 统计，临时缓冲区叠加放大上述问题
+```
+
+---
+
+### Q3 个体交互 ❌
+
+**判定**: 不通过
+
+**问题**: PRD 完全未提及哪些个体（Entity）参与、哪些 pub/sub 通道受影响。RLE 是压缩层，但压缩的是什么个体的哪条通道的数据，一字未提。
+
+**应写什么**:
+
+```
+涉及个体:
+- Publisher 侧: 状态广播个体（持有位置/速度/属性序列的 Entity），
+  在广播前执行 RLE encode 压缩状态 run
+- Subscriber 侧: WorldView Aggregator，接收压缩流后执行 RLE decode
+  恢复个体状态，写入世界快照
+
+涉及 pub/sub 通道:
+- /world/entity/state_compressed  （RLE 编码后的个体状态序列）
+  类型: EntityStateRLEMsg { values[], counts[], num_runs }
+  当前: Publisher 必须填充 values 字段，即使 Subscriber 只读 num_runs
+  修复后: Publisher 可发布 values=discard 的消息，Subscriber 端
+          two-pass 解码第一 pass 无需分配 values 缓冲区
+
+- /world/snapshot/frame_stats     （世界快照帧级统计）
+  依赖 d_num_runs 作为帧内活跃 run 数量指标，
+  discard 修复后该通道数据延迟预期下降（减少无效内存事务）
+
+不涉及通道（需明确排除避免范围蔓延）:
+- /world/entity/raw_state: 原始未压缩状态，不经过 RLE 路径
+- L3 StateBridge 订阅通道: 消费已解码状态，不感知 RLE 层
+```
+
+---
+
+### Q4 API设计 ✅
+
+**判定**: 通过（有条件）
+
+PRD 提供了 Before/After 代码对比，语义清晰，`discard_iterator` 的使用意图明确，`if constexpr (is_discard_v<OutputIt>)` 的实现思路合理。
+
+**需补足的细节**（不影响通过，但建议在实现 sub-task 前补充）:
+
+```cpp
+// 补充：decode 路径的 Before/After（PRD 只写了 encode）
+// 修复前
+world_rle_decode(
+    d_temp, temp_bytes,
+    d_values_in,
+    d_counts_in,
+    d_values_out,   // 必须为真实指针
+    d_num_items,
+    n_runs,
+    stream
+);
+
+// 修复后：仅验证解码长度，不写出值
+world::std::discard_iterator discard;
+world_rle_decode(
+    d_temp, temp_bytes,
+    d_values_in,
+    d_counts_in,
+    discard,        // 仅统计 d_num_items，验证解码完整性
+    d_num_items,
+    n_runs,
+    stream
+);
+
+// 补充：错误处理契约
+// - 若 d_values_out = discard 且 d_counts_out = discard 同时成立，
+//   API 应在编译期通过 static_assert 报错（两个输出同时丢弃无意义）
+// - discard_iterator 的 operator= 须为 __device__ __host__ 双修饰，
+//   否则在 ISG 内核内调用时链接失败
+```
+
+---
+
+### Q5 展示层影响 ❌
+
+**判定**: 不通过
+
+**问题**: PRD 完全未提及 L3 展示层。即使 RLE 是 L1 原语，也需要说明 StateBridge 和 needle-tools 是否感知此变更、GLB 加载路径是否受影响。
+
+**应写什么**:
+
+```
+展示层影响评估（L3 needle-engine / StateBridge）:
+
+【直接影响：无】
+needle-engine 通过 StateBridge 订阅 /world/entity/state_compressed
+的已解码版本，RLE 层对 L3 完全透明。discard_iterator 是 L1
+内核内部的写出优化，不改变任何消息格式或通道结构。
+
+【间接影响：正向，需量化】
+- WorldView Aggregator two-pass 解码延迟下降 → StateBridge 推送
+  世界快照的帧率提升，needle-tools 的 GLB 状态更新更平滑
+- 建议在性能测试 sub-task 中增加一项：测量从 RLE encode 完成
+  到 StateBridge 推送 GLB transform 数据的端到端延迟，
+  对比 discard 前后，作为 L3 受益的量化依据
+
+【GLB 资产影响：无】
+GLB 模型文件本身不涉及 RLE 路径，无需重新导出或修改
+
+【需要 L3 侧配合的事项：无】
+此修复为纯 L1 内部变更，L3 无需修改代码、配置或资产
+```
+
+---
+
+## 总体判定
+
+> ### ❌ 需修改（不可进入实现阶段）
+
+| 问题 | 状态 | 修改代价 |
+|------|------|----------|
+| Q1 模块归属 | ❌ | 低——确认 transport vs message，填写一行 |
+| Q2 问题陈述 | ❌ | 中——补"为什么有问题"段落 + 间接影响展开 |
+| Q3 个体交互 | ❌ | 中——补 Publisher/Subscriber 实体 + 通道名 |
+| Q4 API 设计 | ✅ | 建议补 decode 路径和错误契约，非阻断 |
+| Q5 展示层影响 | ❌ | 低——补"无直接影响"说明 + 端到端延迟测量项 |
+
+**核心风险**: Q3 缺失意味着实现者不知道 discard 优化应优先覆盖哪条 DDS 通道，可能导致只优化了 encode 路径而遗漏 WorldView Aggregator 的 decode two-pass 场景——这正是 P1 优先级背后最高频的实际痛点。

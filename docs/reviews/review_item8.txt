@@ -1,0 +1,81 @@
+## PRD 审核报告
+
+**工单**: [BUG] Inner lists in neuron.bindings API reference are dropped
+**优先级**: P1 🟡 | **模块**: 未填写
+
+---
+
+### Q1 架构定位 ❌
+
+**判定依据**: 模块字段为 `?`，未明确归属层级。
+
+工单涉及 `neuron.bindings`（L1世界模型的Python绑定层）与文档生成工具链，但两者在架构中定位不同——前者是 L1 运行时接口，后者是构建基础设施。工单将两者混同，缺少对"此BUG影响哪一层的开发者工作流"的明确声明。
+
+**修改建议**:
+- 模块字段改为 `L1::neuron.bindings / DevTools::doc-pipeline`，双标注
+- 正文首段补充一句架构定位：*"本 BUG 位于 L1 世界运行时（Neuron_SP）的 Python 接口层，影响路径为：L1 docstring 源码 → Sphinx autodoc → 开发者 API 参考站点"*
+
+---
+
+### Q2 问题陈述 ✅
+
+**判定依据**: Description 结构清晰，具备复现代码、预期vs实际对比。
+
+正文提供了最小复现示例，清楚展示了"嵌套列表被丢弃"的前后差异，根因方向（缩进层级解析）也已指出。P1优先级与"影响开发者理解world::std Python接口"的表述相符。
+
+**小瑕疵（不降级，但建议修复）**: 未注明复现环境（Sphinx 版本、Python 版本、autodoc 插件版本），CI 环境可能与本地不一致时难以快速定位。建议在 Description 末尾增加 **Environment** 小节。
+
+---
+
+### Q3 个体交互 ❌
+
+**判定依据**: 本系统核心概念是"个体（Individual）"在pub/sub-loop中的状态广播与交互，但工单完全未说明此BUG对个体交互语义的影响范围。
+
+`individual_sync` 的 `isg_size`、`ipu_count`、`pipeline_stages` 参数直接关联 ISG（warp）广播拓扑与流水线传播阶段——这些是 DDS/RTPS 状态同步的核心配置。文档丢失意味着开发者可能错误配置 ISG，导致个体状态同步静默失败，但工单完全没有分析这条影响链。
+
+**修改建议**:
+- Dependencies 中补充：*"ISG 广播拓扑配置正确性（错误的 isg_size 将导致 warp 内个体状态同步异常）"*
+- Sub-tasks 中增加一条：*"评估因文档缺失导致的 ISG/IPU 参数误用风险，必要时在 CI 增加参数合法性校验"*
+
+---
+
+### Q4 API 设计 ✅（附条件）
+
+**判定依据**: Sub-tasks 与 Acceptance Criteria 对 API 文档修复路径描述完整，且明确要求"修复后向前兼容，已有 docstring 无需格式变更"，保护了存量接口。
+
+**需补充的条件**: AC 中"Sphinx 构建无 warning 与 error"过于宽泛，应收窄为：
+
+> *"与嵌套列表渲染相关的 autodoc warning 归零；存量 warning 基线不得劣化"*
+
+否则该条目在含历史 warning 的大型项目中永远无法通过，变成僵尸AC。
+
+---
+
+### Q5 展示层影响 ❌
+
+**判定依据**: L3展示层（needle-tools）完全未被提及。
+
+文档站点是否通过 needle-tools 渲染或集成？若 needle-tools 有自己的 API 参考视图，此次 Sphinx 修复是否需要同步更新该视图的数据源？工单现状是将展示层影响归零处理，存在修复盲区。
+
+**修改建议**:
+- Dependencies 补充：*"L3 needle-tools 文档视图集成确认（需评估是否直接消费 Sphinx 输出）"*
+- Acceptance Criteria 补充：*"needle-tools 侧 API 参考视图中嵌套列表同步正确展示（若适用）"*
+- 若 needle-tools 与 Sphinx 完全解耦，则在工单中**显式声明**"L3展示层不受影响，原因：……"，消除歧义
+
+---
+
+## 总体判定
+
+```
+❌ 不通过 — 需补充后重审
+```
+
+| 维度 | 状态 | 权重影响 |
+|------|------|----------|
+| Q1 架构定位 | ❌ | 模块归属模糊，跨层边界不清 |
+| Q2 问题陈述 | ✅ | 复现充分，缺环境信息（可接受） |
+| Q3 个体交互 | ❌ | **最高风险**：ISG误配可致状态同步静默失败 |
+| Q4 API 设计 | ✅ | AC需收窄warning条件 |
+| Q5 展示层影响 | ❌ | needle-tools 集成影响未评估 |
+
+**核心阻断原因是 Q3**：一个涉及 `individual_sync` + `isg_size` + `pipeline_stages` 的P1 BUG，必须明确说明对个体状态广播拓扑的下游风险，否则修复范围可能仅停留在"让文档好看"，而忽略了因文档缺失已导致的潜在误用。建议指派人补充 Q1/Q3/Q5 三项后重新提审。

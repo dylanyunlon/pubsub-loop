@@ -1,0 +1,180 @@
+# PRD审核报告：GPU个体批处理调度器
+
+---
+
+## Q1 架构定位 ✅
+
+**Layer 2 — Decision Engine / component模块**，定位清晰。
+
+批处理调度器本质是**执行引擎优化**，不改变世界状态语义，不跨层泄漏。`BatchTickProcessor` 作为 `ComponentBase::on_tick()` 的内部执行后端，对 L1/L3 透明。
+
+> ⚠️ 轻微问题：PRD 将 `scheduler::CRoutineScheduler` 列为依赖，但未说明批处理调度器是**替换**还是**包装**现有调度器。建议补充一句关系说明。
+
+---
+
+## Q2 问题陈述 ✅
+
+**数字链完整，可信度高。**
+
+| 数据点 | 评估 |
+|--------|------|
+| 100K 个体 × 5µs/launch = 500ms | ✅ kernel launch 开销量级正确（CUDA 实测 2-10µs） |
+| 33ms tick 预算 | ✅ 对应 30Hz 帧率，合理 |
+| 当前 GPU 利用率 ~3% | ✅ launch-bound 场景的典型表现 |
+
+> ❌ **缺失项**：未说明这 100K 个体的**状态数据当前在哪里**（host内存/device内存/pinned），这直接决定 `execute_batch` 里的 gather 开销是否会吃掉批处理收益。请补充：
+> ```
+> 当前 IndividualState 驻留位置: host pageable / pinned / device
+> gather 到连续 buffer 的预估开销: Xms
+> ```
+
+---
+
+## Q3 个体交互 ❌
+
+**这是本PRD最大的结构性缺口。**
+
+批处理将个体"打平"为连续 GPU buffer 执行，但**完全没有处理个体间依赖**：
+
+**问题1：个体间状态依赖**
+
+示例 kernel 只演示了独立运动积分（`pos += vel * dt`），但 SensorFusion 类型的个体 tick 通常需要读取**邻域个体状态**（感知范围内的其他个体）。当前设计下：
+
+```
+个体A tick → 读取个体B的pos → 个体B同时也在被batch修改
+```
+
+Race condition 未定义。PRD 需明确：
+- 批处理内是否保证 **read-old / write-new** 双缓冲语义？
+- 还是要求同类个体 tick 互相独立（无邻域读取）？
+
+**问题2：跨类型依赖顺序**
+
+PRD 提到"N 种类型 = N 次 kernel launch"，但未定义 kernel 间的**执行顺序约束**。若 TypeB 的 tick 依赖 TypeA 的结果，顺序由谁保证？
+
+**建议补充**：
+
+```cpp
+// 在 BatchConfig 中增加依赖声明
+struct BatchConfig {
+    // ...
+    enum class IsolationMode {
+        kIndependent,      // 个体间无依赖，可完全并行
+        kDoubleBuffered,   // 读旧写新，允许邻域读取
+        kOrdered,          // 严格序列（退化为CPU路径）
+    };
+    IsolationMode isolation = IsolationMode::kIndependent;
+    
+    // 跨类型执行顺序
+    std::vector<std::string> execution_order;  // ["SensorFusion", "Planner", ...]
+};
+```
+
+---
+
+## Q4 API设计 ❌
+
+**接口有两处结构性问题：**
+
+**问题1：`execute_batch` 的入参是指针的 span，gather 语义不清**
+
+```cpp
+// 当前：
+void execute_batch(
+    std::span<IndividualStateT*>  individual_states,  // ← 指针数组
+    WorldTick tick,
+    cudaStream_t stream
+);
+```
+
+`IndividualStateT*` 是 host 指针还是 device 指针？调用方需要在调用前自己 gather 到连续内存吗？这是批处理的核心工作，不能隐藏在"调用方自理"里。
+
+**建议**：明确 gather 归属，并提供两种调用路径：
+
+```cpp
+// 路径A：调用方提供已连续的 device buffer（零拷贝路径）
+void execute_batch_contiguous(
+    IndividualStateT* device_states,   // 已在 device 的连续内存
+    size_t count,
+    WorldTick tick,
+    cudaStream_t stream
+);
+
+// 路径B：框架负责 gather（散列 host 指针 → 连续 device buffer）
+void execute_batch_scattered(
+    std::span<const IndividualStateT*> host_ptrs,  // host 侧散列指针
+    WorldTick tick,
+    cudaStream_t stream,
+    GatherStrategy strategy = GatherStrategy::kPinnedStaging
+);
+```
+
+**问题2：`set_kernel` 的函数指针不携带 block/grid 配置**
+
+```cpp
+using BatchKernel = void(*)(IndividualStateT*, size_t, WorldTick);
+void set_kernel(BatchKernel kernel);
+```
+
+kernel 的 launch 参数（blockDim、gridDim、shared memory）由谁决定？框架猜测 `blockDim=256` 是错的——不同 kernel 的 occupancy 最优配置差异很大。
+
+**建议**：
+
+```cpp
+struct KernelConfig {
+    BatchKernel kernel;
+    dim3 block_dim = {256, 1, 1};
+    size_t shared_mem_bytes = 0;
+    // 可选：自动 tune
+    bool auto_tune_launch_params = false;
+};
+void set_kernel(KernelConfig cfg);
+```
+
+---
+
+## Q5 展示层影响 ✅⚠️
+
+**无直接 L3 破坏，但有一个隐性风险需要标注。**
+
+批处理将状态结果**批量写回**，写回时机与逐个体写回不同——从"tick完立即可见"变为"整批完成后可见"。
+
+对 needle-tools（L3展示层）的影响：
+
+| 场景 | 风险 |
+|------|------|
+| 实时调试单个个体状态 | ⚠️ 批处理中间态不可观测，调试窗口会看到"批量跳变" |
+| 状态订阅时序（DDS广播） | ⚠️ 同类型个体的广播从"分散"变为"突发"，接收端需要处理突发队列 |
+| 录制回放 | ✅ 无影响（回放按 tick 重放，不感知 launch 次数） |
+
+**建议在 PRD 中补充**：
+
+```
+展示层兼容性说明：
+批处理写回后统一触发 DDS publish，
+needle-tools 调试器需支持"批次标记"以区分批处理 vs 逐个体执行路径。
+```
+
+---
+
+## 总体判定
+
+```
+Q1 架构定位  ✅  明确，无跨层污染
+Q2 问题陈述  ✅  数字可信，缺状态驻留位置说明（轻微）
+Q3 个体交互  ❌  个体间依赖语义完全缺失，致命缺口
+Q4 API设计   ❌  gather归属不清 + kernel launch参数缺失，接口不可实现
+Q5 展示层    ✅⚠️ 无破坏但突发广播风险未标注
+```
+
+### 🔴 总体判定：**不通过，需修订后重新提交**
+
+**必须解决的 Blocker（2项）**：
+
+1. **Q3**：在 `BatchConfig` 中定义 `IsolationMode`，明确批内个体是否可互读，以及跨类型 kernel 的执行顺序机制
+2. **Q4**：拆分 `execute_batch` 为 contiguous/scattered 两条路径，明确 gather 责任归属；为 `set_kernel` 增加 `KernelConfig` 携带 launch 参数
+
+**建议修订的 Minor（2项）**：
+
+- Q2 补充当前 `IndividualState` 内存驻留位置及 gather 开销估算
+- Q5 补充 needle-tools 调试器的"批次标记"兼容性说明，以及 DDS 突发广播的接收端处理策略

@@ -1,0 +1,25 @@
+Q1 架构定位 ✅
+
+三层分层清晰，Layer 3 职责边界明确。端到端数据流从 publish 到 WebGL 渲染有完整链路，核心组件 L3-001～L3-010 覆盖了 StateBridge、协议、客户端、资产、性能管理各子域。"展示层只消费 Layer 2 输出，不参与世界模型计算"这条关键约束写进了正文，定位无歧义。
+
+Q2 问题陈述 ❌
+
+PRD 缺少一个显式的"问题/背景"节。当前文档直接从架构定位跳到技术方案，没有回答：现有方案为何不足？为什么选 Needle Engine 而非 Babylon.js / Three.js 原生？1000 个体 60fps 这个规模来自哪个真实场景需求？没有问题陈述，后续子 PRD 作者无法判断取舍优先级，验收时也缺少"解决了什么"的基准。
+
+Q3 个体交互 ✅
+
+个体可视化映射完整：类型→GLB→LOD 级别→动画/轨迹均有 YAML 示例。客户端核心循环里覆盖了新增、更新、删除三条路径，插值器处理 position/rotation/velocity，骨骼动画（joint_state）和运动轨迹（trails）也列出。Mobile 降级策略在 AC 里有一行兜底。
+
+Q4 API 设计 ❌
+
+DeltaFrame 协议（L3-002）是整个链路的核心契约，但在 EPIC 层只出现了"增量编码 + field_mask 压缩"一句话，缺少：帧结构的字段定义（updates/removed 的 schema）、field_mask 的编码方式、帧率/压缩格式（MessagePack? Protobuf? JSON?）、StateBridge 的 C++ 接口签名。代码示例里 `frame.updates[i].pos / .orient / .vel` 字段名直接被使用，但从未在文档中正式定义。子 PRD L3-001/L3-002 被标注为 dependency 而非内联，意味着在子 PRD 落地前这份 EPIC 的 API 契约实际上是空洞的，无法指导实现。
+
+Q5 展示层影响 ✅
+
+性能预算表给出了各环节时间切片（10+20+5+16=51ms，与总计 ≤50ms 有 1ms 出入，是个小笔误，但思路正确）。AC 中列出了 1000 个体/60fps/≤100ms 端到端/10 并发客户端/移动端降级等可量化指标。LRU 卸载（L3-008）和可见性筛选（L3-006）作为 GPU 内存和带宽控制手段已识别。WebRTC 备选（L3-010）作为延伸场景也预留了位置。展示层对上游（Layer 2 接口）和下游（浏览器环境）的影响边界基本可追溯。
+
+---
+
+总结：Q1✅ Q2❌ Q3✅ Q4❌ Q5✅
+
+两处主要阻塞：补写问题陈述节（Why Now / Why Needle Engine / 规模来源），以及在 EPIC 内内联或附录 DeltaFrame 的 schema 草稿，不能完全依赖尚未完成的子 PRD。

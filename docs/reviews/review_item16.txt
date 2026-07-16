@@ -1,0 +1,136 @@
+# PRD 审核报告：[BUG] Benchmark `search.py` does not scan all type axes
+
+---
+
+## Q1 架构定位 ❌
+
+**判定理由：** 定位严重错位。标题明确指向一个 Python benchmark 脚本的 bug（`search.py` 未扫描所有类型轴），但正文将其包装为 `world::tools` 模块的 C++ 框架级缺陷修复。两者完全不是同一个问题：
+
+- `search.py` 是一个测试/基准测试脚本，属于 **L1 工具链层的局部文件**
+- 正文描述的 `Processor` / `StateView` / pub/sub 管道是 **L1 核心状态处理架构**
+- 把一个脚本 bug 拔高为架构级需求，会导致工作量虚报、Review 失焦
+
+**修改建议：**
+```
+将本 Issue 拆成两条：
+  Issue-A：[BUG] search.py 未覆盖所有 type axes → 模块标记为 world::tools::benchmark
+  Issue-B：（如有必要）world::tools Processor API 设计规范化 → 单独立项
+
+Issue-A 的"世界模型定位"段落应改为：
+  "world::tools::benchmark 子模块缺陷：search.py 在类型轴枚举时
+   存在覆盖缺口，导致 CI benchmark 结果不完整，影响性能回归检测。"
+```
+
+---
+
+## Q2 问题陈述 ❌
+
+**判定理由：** Bug 的核心信息完全缺失。作为 P1 bug，必须回答：
+
+- **哪些 type axes 没有被扫描？**（缺失）
+- **当前实际行为 vs 预期行为？**（缺失）
+- **复现步骤？**（缺失）
+- **影响范围？**（仅说"功能正确高效可靠"，无量化）
+- **发现路径？**（CI 失败？人工发现？）
+
+正文的"pub/sub-loop 上下文"段落是通用模板语，对定位这个具体 bug 毫无帮助。
+
+**修改建议：**
+```markdown
+## Bug Detail
+- **复现命令：** `python search.py --type-axes all`
+- **实际输出：** 仅扫描 [axis_a, axis_b]，遗漏 [axis_c, axis_d]
+- **预期输出：** 扫描全部 N 个注册 type axes
+- **根因假设：** search.py 的枚举逻辑硬编码了部分轴，
+                未从 world::type_registry 动态获取完整列表
+- **影响：** benchmark CI 误报通过，掩盖了 axis_c/d 的性能回归
+```
+
+---
+
+## Q3 个体交互 ⚠️（条件通过）
+
+**判定理由：** 表格结构规范，三类个体角色划分清晰（StateProcessor / Scheduler / Monitor），pub/sub 通道图示符合项目惯例。但存在一个关键问题：
+
+**`search.py` 是一个离线 benchmark 脚本，与运行时个体交互无直接关系。** 当前交互模型描述的是正常运行时路径，对于"为什么 benchmark 扫描不全"这个 bug 没有诊断价值。
+
+**修改建议：**
+```
+保留现有表格，但增加一行说明 benchmark 脚本的诊断角色：
+
+| `BenchmarkObserver`  | 离线扫描 type axes | 读取 type_registry，
+                                              不参与 pub/sub 运行时 |
+
+并在图示中补充：
+search.py ──读取──> world::type_registry ──枚举──> [axis_a..axis_N]
+（当前缺陷：枚举在 axis_b 处截断）
+```
+
+---
+
+## Q4 API 设计 ❌
+
+**判定理由：** API 设计与 bug 完全脱节，存在两个问题：
+
+**问题一：** `search.py` 的 bug 修复根本不需要新增或修改 C++ API——它是脚本逻辑错误，修复点在 Python 层的枚举逻辑，而不是 `world::tools::Processor`。
+
+**问题二：** 即便需要展示 API，当前设计也有缺陷：
+- `Config::from_json` 接收 `std::string_view` 却没有说明生命周期约束（dangling risk）
+- `process_tick` 返回 `StateView`——是否是 `StateBuffer` 的视图？生命周期谁管理？
+- `individual_capacity=10000` 这个魔数没有来源说明
+
+**修改建议：**
+```
+对于本 bug（search.py 扫描缺口），API Surface 段落应替换为：
+
+## 涉及接口（Python 层）
+# search.py 当前错误实现
+def get_type_axes():
+    return ["axis_a", "axis_b"]  # ❌ 硬编码，遗漏动态注册的轴
+
+# 修复后应改为
+def get_type_axes():
+    return world_registry.list_all_axes()  # ✅ 从注册表动态获取
+
+如需同步修改 C++ 注册表暴露接口，单独在 Issue-B 中设计。
+```
+
+---
+
+## Q5 展示层影响（L3 needle-tools）✅
+
+**判定理由：** 这是五个维度中唯一基本合格的部分。Acceptance Criteria 中明确包含"个体动态输出场景验证通过"，且正文提到了 needle-tools 集成测试，说明作者意识到 L3 展示层需要验收。
+
+但仍有一处需要补强：
+
+**修改建议：**
+```
+在 Acceptance Criteria 中补充具体的 needle-tools 验收指标：
+
+- [ ] needle-tools 渲染验证：所有被扫描 type axes 的 GLB 输出
+      在 needle-tools 中均可正确加载，无 schema 不兼容报错
+- [ ] 新增 type axis 后，展示层热更新路径无需重启（或明确标注需重启）
+```
+
+---
+
+## 总体判定
+
+```
+┌─────────────────────────────────────────────────────┐
+│  总体判定：❌ 不通过，需返工后重新提交               │
+│                                                     │
+│  Q1 架构定位        ❌  问题与框架严重错位           │
+│  Q2 问题陈述        ❌  核心 bug 信息完全缺失        │
+│  Q3 个体交互        ⚠️  结构合格但与 bug 不相关      │
+│  Q4 API 设计        ❌  修复层次错误，C++ API 无关   │
+│  Q5 展示层影响      ✅  基本覆盖，细节待补           │
+└─────────────────────────────────────────────────────┘
+```
+
+**核心问题：** 这份 PRD 是用 **项目通用模板** 填写了一个 **具体脚本 bug**，导致真正需要描述的内容（哪些 type axes 缺失、为什么、怎么复现）一字未提，而与本 bug 无关的架构描述却占了 80% 篇幅。
+
+**返工优先级建议：**
+1. 先补 Q2（bug 的最小可复现信息），这是 P1 的生命线
+2. 再拆 Q1（将 search.py bug 与架构改造分离立项）
+3. Q4 随 Q1 拆分后自然归位到 Python 修复层

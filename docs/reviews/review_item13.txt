@@ -1,0 +1,171 @@
+# PRD审核报告
+
+**项目**: pub/sub-loop | **Issue**: [BUG] CI pre-commit fails without showing what the error is | **审核时间**: 2026-07-16
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ❌
+
+**判定依据**: 标题声明的是一个 **CI工具链的可观测性BUG**（pre-commit失败但不输出错误信息），但正文架构定位却将其包装为 `world::tools` 模块的通用缺陷修复，并附加了大量与CI诊断无关的世界模型描述。
+
+**核心问题**:
+- 模块标注为 `?`，说明提报者自己也不清楚归属，却在正文中强行定位到 `world::tools`
+- CI pre-commit 属于 **DevOps/toolchain层**，不是 `world::tools` 业务逻辑层
+- L1/L2/L3分层中，此问题应归属 **L1工具链基础设施**，但描述混入了L3展示层（needle-tools集成测试）
+
+**修改建议**:
+```
+模块: world::devops::ci  （或明确标注 CI/CD Infrastructure）
+架构层: L1 工具链 — pre-commit hook / CI runner
+故障域: CI可观测性缺失（stderr/stdout 静默失败）
+```
+正文删除世界模型泛化描述，聚焦：*哪个pre-commit hook、在哪个pipeline stage、静默失败的具体表现*。
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定依据**: 这是一个BUG issue，但**没有任何可复现的问题陈述**。
+
+**缺失的必要要素**:
+
+| 要素 | 现状 |
+|---|---|
+| 复现步骤 | ❌ 完全缺失 |
+| 期望行为 | ❌ 缺失 |
+| 实际行为 | ❌ 仅有标题一句话 |
+| 环境信息 | ❌ 缺失（OS/编译器/CI runner版本）|
+| 错误日志截图 | ❌ 缺失（连"无输出"的截图都没有）|
+
+正文大段 pub/sub-loop 上下文与 BUG 本身**零关联**，是模板填充式噪声。
+
+**修改建议** — 问题陈述应替换为：
+```markdown
+## 复现步骤
+1. 在任意 feature branch 执行 `git commit`
+2. pre-commit hook 触发
+3. 终端无任何输出，进程以非零退出码退出
+
+## 期望行为
+pre-commit 失败时应输出具体错误（lint规则/格式检查/哪个文件）
+
+## 实际行为
+静默失败，无 stderr/stdout，开发者无法判断失败原因
+
+## 环境
+- CI Runner: [GitHub Actions / Jenkins / xxx]
+- OS: Ubuntu 22.04 / macOS 14
+- pre-commit version: x.x.x
+```
+
+---
+
+### Q3 个体交互 ❌
+
+**判定依据**: 个体交互模型表格与本BUG**完全无关**。
+
+**问题分析**:
+- `StateProcessorIndividual` / `SchedulerIndividual` / `MonitorIndividual` 均是业务运行时个体
+- CI pre-commit 是**开发者工作流**，不是运行时个体交互
+- 强行套用个体交互模板，导致表格成为无意义装饰
+
+**如果坚持保留个体交互视角**，正确的映射应为：
+
+```
+正确归属:
+┌─────────────────────────────────────┐
+│  CI Runner (DevOps Individual)      │
+│  ├── trigger: git commit hook       │
+│  ├── pub: hook执行结果              │
+│  └── sub: 无 → ❌ 这正是BUG所在    │
+└─────────────────────────────────────┘
+
+BUG本质: CI Runner Individual 的诊断输出通道未订阅/未路由
+```
+
+**修改建议**: 删除当前表格，改为描述 pre-commit hook 的执行拓扑和断链位置（哪一步的输出被吞掉）。
+
+---
+
+### Q4 API设计 ❌
+
+**判定依据**: 提供的 `world::tools::Processor` API 与 CI pre-commit BUG**没有任何因果关系**。
+
+**严重问题**:
+- 这是一个 **CI诊断可观测性问题**，不需要设计新API
+- `Config::enable_simd` / `alignment=64` 等性能参数出现在BUG修复issue中，完全错位
+- `process_tick(StateBuffer, uint64_t tick)` 是运行时状态处理接口，与pre-commit hooks无关
+
+**如果此BUG需要API层面的修复**，正确的API关注点应为：
+
+```cpp
+// 正确方向：CI诊断输出接口
+namespace world::devops::ci {
+
+struct HookResult {
+    int exit_code;
+    std::string stdout_capture;  // 当前BUG: 此字段为空
+    std::string stderr_capture;  // 当前BUG: 此字段为空
+    std::string hook_name;
+    std::chrono::milliseconds duration;
+};
+
+// 修复目标: 确保 hook 执行器正确捕获并转发输出流
+HookResult run_hook_with_capture(std::string_view hook_path, 
+                                  const HookConfig& cfg);
+}
+```
+
+**修改建议**: 删除现有API代码块，或将其移至独立的feature issue，本BUG的API关注点仅限于输出捕获修复。
+
+---
+
+### Q5 展示层影响 ⚠️ （部分相关，描述错误）
+
+**判定依据**: 提及 needle-tools 集成测试有一定合理性，但描述方式错误。
+
+**可接受的部分**:
+- CI失败确实影响 needle-tools 的构建验证流程
+- 静默失败会导致L3展示层（needle-tools预览）构建状态不可信
+
+**错误的部分**:
+- "从源码到GLB动态输出的完整交付链路" — GLB输出是L3渲染产物，pre-commit阶段根本不涉及
+- Acceptance Criteria 中 "个体动态输出场景验证通过" 与BUG修复验收无关
+- ASAN/TSAN内存安全检查出现在pre-commit BUG的验收标准中，层次混乱
+
+**修改建议** — 展示层影响应简化为：
+```markdown
+## 影响范围
+- needle-tools CI构建状态不可信（因pre-commit静默失败被忽略）
+- L3预览流水线可能基于未验证代码触发，产生错误GLB产物
+- 修复验收: pre-commit 失败时 CI dashboard 可见具体错误原因
+```
+
+---
+
+## 总体判定
+
+```
+┌────────────────────────────────────────────────┐
+│          总体判定: ❌ 不通过 — 需重写           │
+└────────────────────────────────────────────────┘
+```
+
+| 维度 | 得分 | 核心问题 |
+|---|---|---|
+| Q1 架构定位 | 1/5 | 模块归属错误，混淆工具链层与业务层 |
+| Q2 问题陈述 | 0/5 | BUG issue 无复现步骤，致命缺陷 |
+| Q3 个体交互 | 0/5 | 完全不相关的模板堆砌 |
+| Q4 API设计 | 0/5 | 与BUG无因果关系的运行时API |
+| Q5 展示层影响 | 2/5 | 方向有感知但描述严重失焦 |
+| **综合** | **3/25** | **不建议进入排期** |
+
+**根本诊断**: 本issue使用了 pub/sub-loop 项目的**功能需求模板**填写了一个**BUG报告**，导致所有模板章节与实际问题完全脱节。这不是内容质量问题，而是**模板使用错误**。
+
+**最高优先修复动作**:
+1. 换用 BUG报告模板，补充复现步骤（P1优先级要求24h内可复现）
+2. 模块字段明确填写 `world::devops::ci` 或 `CI Infrastructure`
+3. 删除与BUG无关的API代码块和个体交互表格
+4. 若 `world::tools::Processor` API 是独立需求，**新开feature issue**

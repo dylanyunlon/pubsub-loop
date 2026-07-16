@@ -1,0 +1,130 @@
+## PRD审核报告
+
+**标题**: [BUG]: extra unnecessary neuronStreamSynchronize
+**审核员**: pub/sub-loop项目PRD审核员
+
+---
+
+### Q1 架构定位 ❌
+
+**判定依据**: PRD未声明模块归属（`模块: ?`），仅提到`DistributedCore`，但未将其映射到三层架构中的具体位置。
+
+**应写什么**:
+
+```
+架构层级: L1 — 世界模型层
+受影响模块: transport（多流并发通道）、node（个体执行单元）、
+           common/base（DistributedCore 所在的运行时基础设施）
+变更边界: DistributedCore 的流调度逻辑不跨越 L1/L2 边界，
+         StateBridge 无需感知此变更
+```
+
+`DistributedCore`作为并发数据结构集，其流同步行为属于L1传输/运行时层，但PRD完全没有交代——审查者无法判断此修改是否会向上穿透到L2的scheduler/croutine。
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定依据**: 有问题描述和技术原因，但缺少"当前行为→为什么有问题→影响范围"的完整三段式，且影响范围只停留在GPU层面，未延伸到系统可观测层。
+
+**应写什么**（需补足的3段）:
+
+> **当前行为**: `DistributedCore::scatter/gather/allreduce` 等操作在同一CUDA stream的相邻kernel之间插入`neuronStreamSynchronize`，频率约为每次集合通信N次（N待审计确认）。
+>
+> **为什么有问题**: CUDA stream内的kernel天然串行，同stream的同步屏障等价于强制CPU自旋等待GPU排空队列，期间CPU无法向stream提交新work，破坏CPU-GPU双侧流水线重叠。在PipelineParallel场景下，stage间bubble本已存在，冗余同步将bubble放大；在TensorParallel多stream场景下，本可并发的stream被串行化。
+>
+> **影响范围**: ①GPU利用率下降（已在描述中量化为bubble rate上升，但缺少基线数值）；②L1 transport层广播频率受阻，个体状态更新吞吐下降；③L2 scheduler感知到的世界快照刷新延迟增加，可能触发scheduler的超时重调度逻辑（需确认scheduler是否有此机制）；④端到端延迟回归影响L3 StateBridge的快照帧率。
+
+当前正文只写了GPU侧，完全未触及对L1广播吞吐和L2调度感知的连锁影响。
+
+---
+
+### Q3 个体交互 ❌
+
+**判定依据**: PRD完全未提及任何个体（individual）、pub/sub通道、topic名称。这是pub/sub-loop项目PRD的核心必答项，当前为空白。
+
+**应写什么**:
+
+```
+受影响个体类型:
+  - DistributedWorker 个体（执行 scatter/allreduce 的计算节点）
+  - WorldStateCollector 个体（订阅聚合后的世界快照）
+
+受影响 pub/sub 通道:
+  - /world/tensor_state/{rank}     （TensorParallel 各 rank 的状态广播）
+  - /world/pipeline_activation/{stage}  （PipelineParallel stage 间激活传递）
+  - /world/sync_barrier/global     （当前冗余同步对应的隐式全局屏障信号）
+
+变更后通道行为:
+  - /world/sync_barrier/global 发布频率降低（冗余同步移除后屏障事件减少）
+  - /world/tensor_state/{rank} 发布吞吐提升（GPU 不再被 CPU 阻塞）
+  - 新增轻量事件通道: /world/stream_event/{stream_id}（neuronEvent 替代方案
+    是否需要在 DDS/RTPS 层有对应表达，需架构确认）
+```
+
+---
+
+### Q4 API设计 ✅（有瑕疵）
+
+**判定依据**: 提供了Before/After代码对比，逻辑清晰，三类场景（同流冗余、同流天然串行、跨流事件）均有示例。
+
+**瑕疵及应补充内容**:
+
+1. **缺少函数签名上下文**——`scatter`的完整签名未给出，审查者无法确认`stream`参数的来源和生命周期管理
+2. **事件对象生命周期未处理**:
+```cpp
+// 当前示例缺少:
+neuronEvent_t event;
+neuronEventCreate(&event);          // ← 缺失
+neuronEventRecord(event, stream_a);
+neuronStreamWaitEvent(stream_b, event);
+neuronEventDestroy(event);          // ← 缺失，存在资源泄漏风险
+```
+3. **缺少"可替换"类场景的示例**——Sub-tasks将调用分为必要/冗余/可替换三类，但After代码只覆盖了冗余和跨流，"可替换"类（如用`neuronEventQuery`轮询替代阻塞同步）没有示例
+
+---
+
+### Q5 展示层影响 ❌
+
+**判定依据**: PRD完全未提及needle-tools、GLB、StateBridge，但世界状态处理吞吐变化必然影响快照刷新链路。
+
+**应写什么**:
+
+```
+StateBridge 影响:
+  - GPU 利用率提升 → L1 个体状态广播吞吐提升 → WorldView 快照刷新频率
+    预期提升（需与 StateBridge 的轮询/推送间隔对齐确认）
+  - 若 StateBridge 当前以固定帧率拉取 WorldView，此变更对 L3 透明；
+    若 StateBridge 以事件驱动方式响应状态变更，需确认新的 neuronEvent
+    机制是否产生额外的状态变更事件风暴（event burst）
+
+needle-engine GLB 渲染影响:
+  - 世界快照刷新率提升可能导致 needle-engine 接收到更密集的状态更新，
+    需确认 GLB 场景的 transform 更新是否有节流（throttle）保护
+  - 若个体位置/速度属性更新频率超过渲染帧率（通常60fps），
+    需在 StateBridge 侧增加时间戳去重或插值逻辑
+
+验收时需补充的展示层指标:
+  - L3 快照帧率变化（before/after）
+  - needle-engine 侧 CPU 占用变化（防止状态更新洪水）
+```
+
+---
+
+## 总体判定
+
+> **🔴 需修改**（不是需重写）
+
+技术核心（Q4的API设计）是合格的，问题诊断有一定深度，工程师显然理解底层机制。但作为pub/sub-loop项目的PRD，Q3个体交互和Q5展示层影响**完全缺失**，这两项是本项目PRD区别于普通CUDA优化ticket的核心要求。Q1架构定位和Q2影响范围也需要补齐到系统层面。
+
+**最小修改清单（按优先级）**:
+
+| # | 项目 | 工作量估计 |
+|---|------|-----------|
+| 1 | 补充Q3：列出受影响个体和pub/sub通道 | 30分钟 |
+| 2 | 补充Q5：StateBridge/needle-engine影响分析 | 45分钟 |
+| 3 | 补充Q1：在三层架构中明确模块归属 | 10分钟 |
+| 4 | 补充Q2：L2调度感知和L3帧率的连锁影响段落 | 20分钟 |
+| 5 | 修复Q4：事件生命周期管理代码 | 15分钟 |
+
+修改后可直接进入技术评审，无需重新立项。

@@ -1,0 +1,163 @@
+# PRD 审核报告
+
+**项目**: pub/sub-loop | **工单**: BUG - neuron.cooperative 版本检查缺失
+**审核员**: L1/L2/L3 架构准入审查
+
+---
+
+## Q1 架构定位 ❌
+
+**判定依据**
+
+标题明确指向 `neuron.cooperative` 的版本兼容性检查缺失，但正文将问题定位为 `world::io` 模块的 I/O 吞吐优化。两者在架构层面完全错位：
+
+| 维度 | 标题声明 | 正文实现 |
+|---|---|---|
+| 故障域 | `neuron.cooperative`（协同层） | `world::io`（I/O 层） |
+| 问题性质 | 版本兼容性校验缺失 | 批量处理/流式编解码 |
+| 架构层 | L2 决策层（个体协同） | L1 世界模型 I/O |
+
+**修改建议**
+
+正文第一句必须回答：`neuron.cooperative` 在调用 `Neuron` / `Neuron_SP` 时，**具体缺失哪个版本校验点**（构造期、初始化期、还是 tick 调用期）？若 `world::io` 是间接影响路径，需显式说明传导链：`neuron.cooperative` → 版本不匹配 → `world::io` 状态污染。否则应拆分为两个独立工单。
+
+---
+
+## Q2 问题陈述 ❌
+
+**判定依据**
+
+BUG 工单的核心要求是：**可复现的失败场景 + 预期行为 + 实际行为**。正文完全缺失这三项，取而代之的是功能需求描述（TopK 选择、流式编解码、管道并行）。这使得：
+
+- 无法判断 Bug 的严重程度是否与 P1 匹配
+- 无法编写 regression test
+- 无法确认修复是否达标
+
+**修改建议**
+
+在 `Description` 下补充标准 BUG 三段式：
+
+```markdown
+**复现步骤**
+1. 初始化 neuron.cooperative，使用 Neuron v1.2 + Neuron_SP v1.4（版本不兼容组合）
+2. 调用 cooperative.negotiate()
+3. 观察行为
+
+**预期行为**
+返回 VersionMismatchError，拒绝初始化
+
+**实际行为**
+静默通过，后续 world::io::Processor::process_tick() 产生未定义状态
+```
+
+---
+
+## Q3 个体交互 ⚠️ 部分通过
+
+**判定依据**
+
+交互表格结构规范，三类个体角色划分清晰（StateProcessor / Scheduler / Monitor）。但存在两个问题：
+
+**问题一**：`neuron.cooperative` 作为本 BUG 的主角，完全未出现在交互模型中。无法看出版本检查缺失在哪个个体交互节点上引发故障。
+
+**问题二**：pub/sub 流图仅描述正常路径，缺少版本校验失败时的错误传播路径。
+
+**修改建议**
+
+```
+# 补充故障传播路径
+neuron.cooperative
+  ──[version check MISSING]──> Neuron_SP (vX)
+  ──[状态污染]──> StateProcessor
+  ──pub──> channel://world/io/update ──sub──> Monitor [收到脏数据]
+
+# 交互表补充一行
+| `NeuronCooperativeIndividual` | 版本协商 | 初始化握手（当前缺失校验） |
+```
+
+---
+
+## Q4 API 设计 ❌
+
+**判定依据**
+
+提供的 API 完全服务于 `world::io::Processor`，与 BUG 标题所指的 `neuron.cooperative` 版本检查**零关联**。审核无法找到以下必要接口：
+
+```cpp
+// 以下内容在 API Surface 中完全缺失：
+neuron::cooperative::check_neuron_version()
+neuron::cooperative::check_neuron_sp_version()
+// 或版本协商结构体
+struct VersionManifest { semver_t neuron_version; semver_t sp_version; };
+```
+
+此外，`world::io::Config` 中的 `individual_capacity` / `enable_simd` 等字段与版本检查无关，在本工单中引入会造成审查范围膨胀。
+
+**修改建议**
+
+API Surface 应聚焦版本检查语义：
+
+```cpp
+namespace neuron::cooperative {
+
+struct VersionRequirement {
+    semver_t neuron_min;   // e.g. "1.3.0"
+    semver_t neuron_sp_min;
+};
+
+enum class VersionCheckResult { OK, NEURON_MISMATCH, SP_MISMATCH };
+
+class Cooperative {
+public:
+    // 修复点：在 initialize() 中强制调用此方法
+    VersionCheckResult check_versions(const VersionRequirement& req) const;
+    bool initialize(const VersionRequirement& req);  // 集成校验
+};
+
+}  // namespace neuron::cooperative
+```
+
+若 `world::io::Processor` 确实相关，在 `Dependencies` 中说明即可，不应占据 API Surface 主体。
+
+---
+
+## Q5 展示层影响 ⚠️ 部分通过
+
+**判定依据**
+
+正文提到"影响 needle-tools GLB 场景的实时刷新率"，说明作者意识到 L3 展示层的连锁影响。但描述停留在性能层面（刷新率），未指出版本不匹配引发的**数据正确性问题**对展示层的影响更为严重：
+
+- 脏状态数据发布到 `channel://world/io/update` 后，needle-tools 会渲染出**位置/状态错误的个体**
+- 这是 P1 级视觉故障，比刷新率下降更需要在 AC 中显式覆盖
+
+**修改建议**
+
+在 Acceptance Criteria 中补充：
+
+```markdown
+- [ ] 版本不兼容时，needle-tools GLB 场景**不渲染任何状态**（fail-safe，非脏渲染）
+- [ ] 版本校验失败事件通过诊断通道上报，MonitorIndividual 可观测
+```
+
+---
+
+## 总体判定
+
+```
+Q1 架构定位     ❌  主题漂移，标题与正文描述不同模块
+Q2 问题陈述     ❌  缺失 BUG 三要素（复现/预期/实际）
+Q3 个体交互     ⚠️  结构合格，主角缺席
+Q4 API 设计     ❌  API 与 BUG 主题无关
+Q5 展示层影响   ⚠️  有意识到影响但分析层次不足
+```
+
+### 🔴 总体判定：**不通过，需要返工**
+
+**核心问题只有一个**：这张工单把 BUG 标题（版本校验缺失）和功能需求正文（I/O 吞吐优化）混在一起提交了。
+
+**最小返工路径**：
+
+1. **要么**：正文聚焦 `neuron.cooperative` 版本校验，补充 BUG 三要素，替换 API Surface → 本工单可通过
+2. **要么**：拆分为两张独立工单——`BUG: neuron.cooperative 版本校验缺失` + `FEAT: world::io 吞吐优化`，模块字段从 `?` 改为明确值
+
+模块字段标注 `?` 也需在提交前确认填写，这是 P1 工单的基本要求。

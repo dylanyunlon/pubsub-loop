@@ -1,0 +1,153 @@
+## PRD 审核报告
+
+**项目**: pub/sub-loop | **Issue**: neuronx UB 修复 | **优先级**: P1 🟡
+
+---
+
+### Q1 架构定位 ❌
+
+**判定**: 不合格
+
+**问题**:
+- 标题是 `neuronx::device::attrs::memory_pool_supported_handle_types_t::fabric` 的 UB，但正文架构定位写的是 `world::base` 模块泛化基础设施。二者**命名空间完全割裂**，读者无法判断这是 neuronx 驱动层的 bug 还是 world::base 的设计缺陷。
+- "类区块链世界模型"定位未体现：fabric handle type 是分布式内存互联（如 NVLink Fabric / CXL），与 DDS/RTPS 广播状态的关系未建立。
+- L1/L2/L3 分层在正文中没有明确标注本 bug 落在哪一层。
+
+**修改建议**:
+```
+架构定位应明确写：
+- 受影响层：L1 world::base（底层原语）
+- 根因模块：neuronx::device::attrs（设备属性层，world::base 的下游依赖）
+- 传播路径：neuronx UB → world::base 内存分配不确定行为
+  → pub/sub 零拷贝传输数据损坏 → L3 GLB 渲染状态撕裂
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定**: 不合格
+
+**问题**:
+- **UB 的具体形式未描述**。`fabric` 字段的 UB 是什么类型？未初始化读？枚举越界？位域截断？违反 strict aliasing？完全缺失。
+- **触发条件未描述**。何种 handle type 组合、何种硬件环境、何种编译器版本会触发。
+- **现象与后果未描述**。是 crash、数据静默错误、还是 ASAN 报告？
+- 正文 Description 标题格式异常（双冒号 `::` 明显是复制粘贴未清理）。
+
+**修改建议**:
+```markdown
+### 问题陈述（建议补充）
+- **UB 类型**: [枚举值越界 / 未初始化 / ...]
+- **最小复现**: 编译器版本、硬件环境、复现步骤
+- **观测现象**: ASAN 报告 / crash stacktrace / 静默错误
+- **影响范围**: 仅 fabric handle 还是整个 memory_pool handle type?
+- **严重性依据**: 为何评 P1（数据丢失？生产崩溃？）
+```
+
+---
+
+### Q3 个体交互 ✅ ⚠️
+
+**判定**: 基本合格，有待加强
+
+**亮点**: 交互矩阵结构清晰，`StateProcessorIndividual → channel://world/base/update → MonitorIndividual` 的数据流图简洁。
+
+**问题**:
+- `SchedulerIndividual` 的 CRoutine tick 调度与本 UB 修复的**关联性未说明**——它是受影响方还是无关旁观者？
+- 个体交互模型描述的是**理想态**，未描述 UB 存在时个体行为的**异常态**（如 fabric handle 错误时 StateProcessor 会 fallback 还是 crash）。
+- 缺少个体间的**背压/容错机制**描述。
+
+**修改建议**:
+```
+补充一列"UB 影响" 到交互表：
+| 个体类型             | UB 存在时的行为        |
+|----------------------|----------------------|
+| StateProcessor       | 内存分配 UB → 状态污染 |
+| Scheduler            | 不受影响 / 受影响原因  |
+| Monitor              | 可能漏报异常           |
+```
+
+---
+
+### Q4 API 设计 ❌
+
+**判定**: 不合格
+
+**问题**:
+- `Config` / `Processor` 是泛化 world::base API，与 `neuronx::device::attrs::memory_pool_supported_handle_types_t::fabric` **完全无关**。修复一个 UB 不应新增如此大量的 API surface。
+- `process_tick` 返回 `StateView`（非拥有视图），但 `StateBuffer` 的生命周期管理未说明，在零拷贝场景下有悬垂引用风险。
+- `Config::from_json` 接受 `std::string_view` 但未说明字符串的生命周期要求，在异步 pub/sub 场景下危险。
+- `static Config from_json(std::string_view p)` 缺少错误处理（返回值？异常？expected<>？）。
+- API 示例中 `proc.initialize()` 返回值被忽略，`[[nodiscard]]` 未标注。
+- **最关键**：修复 UB 的实际 API 变更（`fabric` 字段如何修正）完全没有体现。
+
+**修改建议**:
+```cpp
+// 1. UB 修复本身应有 before/after 对比
+// BEFORE (UB):
+struct memory_pool_supported_handle_types_t {
+    uint32_t fabric : 1;  // UB: [具体原因]
+};
+
+// AFTER (fix):
+struct memory_pool_supported_handle_types_t {
+    bool fabric = false;  // 或其他修复方案
+};
+
+// 2. StateView 需明确生命周期
+StateView process_tick(const StateBuffer& s, uint64_t tick);
+// → 改为: Expected<StateOwned, Error> process_tick(...)
+// 或明确注释: StateView 生命周期不超过入参 s
+
+// 3. nodiscard
+[[nodiscard]] bool initialize();
+```
+
+---
+
+### Q5 展示层影响 ❌
+
+**判定**: 不合格
+
+**问题**:
+- 正文仅有一句"防止 GLB 渲染中出现状态撕裂"，**完全没有说明 needle-tools (L3) 的具体影响**。
+- 未说明：GLB 渲染器订阅哪个 channel、如何消费 `StateView`、fabric UB 如何传播到渲染错误。
+- 未说明：修复后 L3 是否需要联动变更（如重新订阅、清除缓存状态）。
+- Acceptance Criteria 中"个体动态输出场景验证通过"——**没有定义验证标准**，无法客观判定通过与否。
+
+**修改建议**:
+```markdown
+### L3 展示层影响（needle-tools）
+- **受影响组件**: [具体渲染器/可视化组件名]
+- **异常表现**: fabric UB 导致 [具体渲染错误现象]
+- **修复后验证**: 
+  - [ ] needle-tools 渲染帧与 pub/sub 状态一致性检查
+  - [ ] GLB 场景回归测试（指定测试用例编号）
+  - [ ] 无需 L3 代码变更 / 需要变更 [原因]
+```
+
+---
+
+## 总体判定
+
+```
+Q1 架构定位   ❌  Q2 问题陈述  ❌  Q3 个体交互  ✅⚠️
+Q4 API设计    ❌  Q5 展示层    ❌
+```
+
+### 🔴 总体: 不通过，需重大修订
+
+**核心问题**: 这份 PRD 存在**身份错位**——标题是一个具体 UB bug fix，但正文写成了 world::base 新模块设计文档。两套内容强行拼接，导致问题陈述、API 设计、展示层影响全部失焦。
+
+**建议拆分为**:
+
+| 文档 | 内容 |
+|------|------|
+| **Bug Report** | neuronx UB 根因、复现、ASAN 证据、最小修复 diff |
+| **设计文档**（可选） | world::base Processor/Config API，若确有新增需要 |
+
+**最高优先修复项**（按序）:
+1. 补充 UB 的具体类型和复现证据（P1 凭据）
+2. 建立 `neuronx::` → `world::base` → pub/sub → L3 的完整因果链
+3. API 中体现实际 fix（before/after），而非无关新 API
+4. L3 验证标准可量化

@@ -1,0 +1,157 @@
+## pub/sub-loop PRD 审核报告
+
+---
+
+### Q1 架构定位 ❌
+
+**判定依据：** PRD 声称修复 `world::base` 模块缺陷，但架构归属模糊。
+
+**问题：**
+- 标题直接暴露上游 bug 原文（`neuron::atomic_ref` + `autosp_jit` + `--device-debug`），说明这是**外部依赖库的缺陷**，而非 `world::base` 自身缺陷——两者在 L1 中的边界未厘清
+- "世界模型基础设施"定位正确，但未说明该 bug 影响的是 **L1 状态存储层**、**pub/sub 传输通道层**，还是两者兼有
+- `module: ?` 字段留空，审核无法完成分层归属验证
+
+**修改建议：**
+```
+模块: world::base (L1-infrastructure)
+受影响层: L1 原子操作原语 → pub/sub 通道数据完整性
+根因归属: 外部依赖 neuron::atomic_ref 在 autosp_jit + 
+          --device-debug 组合下的 ABI 不兼容，
+          world::base 需封装 workaround 或 pin 依赖版本
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定依据：** 问题描述未达到可复现标准。
+
+**问题：**
+- 无**最小复现路径**（MRE）：缺少触发条件的具体步骤，`autosp_jit` 与 `--device-debug` 同时启用时的失败现象未描述
+- 无**失败表征**：crash / UB / 编译错误 / 运行时数据错误？完全缺失
+- "防止 GLB 渲染中出现状态撕裂"——状态撕裂与 `atomic_ref` 失败的因果链未建立，属于结论跳跃
+
+**修改建议：**
+```markdown
+### 问题陈述（补充）
+- 触发条件: autosp_jit=true AND --device-debug 编译标志同时启用
+- 失败现象: [crash stack / sanitizer report / 错误输出 粘贴于此]
+- 影响范围: 受影响的 individual 类型 / tick 频率 / 数据量级
+- 当前 workaround: 无 / 禁用 --device-debug（影响调试能力）
+```
+
+---
+
+### Q3 个体交互 ✅（有条件通过）
+
+**判定依据：** 交互模型结构完整，三类个体角色划分清晰。
+
+**通过点：**
+- `StateProcessorIndividual` / `SchedulerIndividual` / `MonitorIndividual` 角色分离合理
+- pub/sub 拓扑图 `StateProcessor ──pub──> channel://world/base/update ──sub──> Monitor` 符合 DDS/RTPS 单向广播语义
+
+**条件性问题：**
+- `SchedulerIndividual` 的 `CRoutine` 调度与 `atomic_ref` bug 的关联未说明——如果 bug 在 CRoutine 上下文中才触发，这是关键信息
+- 诊断通道类型未定义（是否复用 pub/sub，还是带外通道？）
+
+**修改建议：**
+```
+补充: SchedulerIndividual 在 autosp_jit 模式下的 tick 
+      调度是否会触发 atomic_ref 的问题路径？
+      如是，需在交互模型中标注 ⚠️ 受影响节点
+```
+
+---
+
+### Q4 API 设计 ❌
+
+**判定依据：** API 与 bug 修复目标脱节，设计合理性存疑。
+
+**问题一：设计与 bug 无关**
+```cpp
+// 当前 API 完全没有体现 atomic_ref 修复
+// Config / Processor / StateView 是通用处理器抽象
+// 看不出如何解决 autosp_jit + --device-debug 下的原子操作失败
+```
+
+**问题二：接口语义不完整**
+```cpp
+bool initialize();  
+// 返回 bool 但无错误信息 → 应返回 Result<void, Error>
+
+StateView process_tick(const StateBuffer& s, uint64_t tick);
+// StateView 生命周期未定义 → 是借用视图还是拥有所有权？
+// 与 pub/sub zero-copy 语义冲突风险
+```
+
+**问题三：示例代码存在问题**
+```cpp
+// world::state::collect_current() 未在 API Surface 定义
+// create_writer 的错误处理缺失
+// Config{} 默认构造与 from_json 的关系未说明
+```
+
+**修改建议：**
+```cpp
+namespace world::base {
+
+// 明确暴露 atomic_ref 修复的封装点
+template<typename T>
+using safe_atomic_ref = /* workaround impl for autosp_jit */;
+
+// 错误处理显式化
+class Processor {
+public:
+  struct InitError { enum Code { kAlignmentFail, kAtomicUnsupported }; Code code; std::string detail; };
+  
+  std::expected<void, InitError> initialize();
+  
+  // 明确 StateView 所有权语义
+  // 若为借用: StateView 不得跨 tick 持有
+  StateView process_tick(const StateBuffer& s, uint64_t tick) &;
+};
+
+} // namespace world::base
+```
+
+---
+
+### Q5 展示层影响 ✅（有条件通过）
+
+**判定依据：** 提及 GLB 渲染状态撕裂，说明作者意识到 L3 影响，但论证不足。
+
+**通过点：**
+- 识别到 `world::base` 原子操作缺陷 → pub/sub 数据完整性 → L3 needle-tools GLB 渲染 的影响链
+- Acceptance Criteria 包含"个体动态输出场景验证"，可覆盖展示层回归
+
+**条件性问题：**
+- 未定义展示层的**验证标准**：GLB 状态撕裂如何量化检测？是视觉 diff、帧数据校验，还是 TSAN 报告？
+- needle-tools 侧是否需要配套修改（如消费端的 memory order 假设）？
+
+**修改建议：**
+```markdown
+### L3 展示层验证补充
+- 测试场景: 高频 tick（≥1000Hz）下 GLB 渲染帧数据一致性校验
+- 验证方式: 对比 atomic_ref 修复前后的 StateView 快照 hash
+- needle-tools 侧: 确认消费端 memory_order_acquire 语义无需变更
+```
+
+---
+
+## 总体判定
+
+**❌ 不通过（需重大修订后重审）**
+
+| 维度 | 评分 | 核心问题 |
+|---|---|---|
+| Q1 架构定位 | ❌ | 外部依赖 bug 与自身模块边界未厘清 |
+| Q2 问题陈述 | ❌ | 无 MRE，无失败表征，因果链断裂 |
+| Q3 个体交互 | ✅ | 结构合理，补充 CRoutine 关联即可 |
+| Q4 API 设计 | ❌ | API 与 bug 修复脱节，所有权/错误语义缺失 |
+| Q5 展示层影响 | ✅ | 识别正确，验证标准需量化 |
+
+**最高优先级修改项（阻塞重审）：**
+
+1. **补充 MRE**：提供 `neuron::atomic_ref` + `autosp_jit` + `--device-debug` 的最小复现代码和失败输出
+2. **厘清修复策略**：是 pin 上游版本、封装 workaround、还是替换实现？在架构定位中明确
+3. **API 重设计**：将修复点显式体现在 API 层，补全错误处理和生命周期语义

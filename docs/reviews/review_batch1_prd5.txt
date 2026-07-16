@@ -1,0 +1,23 @@
+Q1 架构定位 ✅
+明确标注 Layer 2 内部决策层，模块归属 scheduler，角色描述清晰——优化 CRoutine 工作窃取的缓存局部性，与 pub/sub-loop 世界的执行模型对应。准入通过。
+
+Q2 问题陈述 ✅
+因果链完整：拓扑相邻个体互相订阅 → 随机窃取导致跨 core cache miss → A 的状态需从 core 0 L2 拉到 core 7。问题可测量（L2 cache miss rate），场景具体（100K 个体 / 8 cores）。准入通过。
+
+Q3 个体交互 ❌
+PRD 以"拓扑距离"作为核心调度依据，但未定义个体拓扑图的来源与更新机制。关键缺失：
+- TopologyDistanceCache 从哪里获取 world graph？是静态初始化还是运行时动态更新？
+- 当个体订阅关系变化（动态拓扑）时，hop count 缓存如何失效与刷新？
+- 拓扑距离计算的时机（eager vs lazy）及最坏情况延迟未说明。
+这直接影响 select_victim() 的正确性与实时性，是设计核心，不能遗留到实现阶段。准入不通过。
+
+Q4 API 设计 ❌
+接口存在两处明显问题：
+- select_victim() 返回 int（core index），但未定义无可选 victim 时的回退行为（返回 -1？随机选？）——调用方无法安全处理边界情况。
+- steal_batch() 返回 std::vector<CRoutine*>，在热路径上触发堆分配，与 < 100ns 的延迟 AC 直接冲突；应改为预分配 span 或 fixed-size buffer。
+另外 Config 的两个权重（0.7 + 0.3 = 1.0）未说明约束，调用方不知是否需要归一化校验。准入不通过。
+
+Q5 展示层影响 ✅
+本 Feature 纯属 scheduler 内部优化，不新增任何对外 API、消息类型或可观测状态。验收指标（L2 miss rate、victim 选择延迟、core 负载差）均属内部 benchmark，对展示层零影响。准入通过。
+
+综合判定：3✅ 2❌，建议在补充 Q3（拓扑图来源与动态更新协议）和 Q4（边界回退行为 + 热路径内存分配方案）后重新提审。
