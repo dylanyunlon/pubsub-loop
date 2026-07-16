@@ -1,0 +1,180 @@
+# PRD 审核报告
+
+**项目**: pub/sub-loop 类区块链世界模型个体系统
+**Issue**: [BUG] neuron.cooperative 重复链接同一算法导致 multiple definitions
+
+---
+
+## Q1 架构定位 ❌
+
+**判定**: 不通过
+
+**问题**:
+1. 标题明确指向 `neuron.cooperative` 模块的链接器错误（ODR violation / multiple definitions），但正文完全切换到 `world::io` 模块的功能需求描述，**Bug 定位与正文描述严重错位**
+2. L1/L2/L3 层归属未声明。`neuron.cooperative` 是 L1 世界模型的组成部分还是独立层？`world::io` 在架构中的层级位置同样缺失
+3. 模块字段填写为 `?`，这是 P1 级 Bug，模块归属必须明确
+
+**修改建议**:
+```
+模块: world::neuron.cooperative (L1 世界模型层)
+受影响层: L1 → 可能传导至 L2 决策层调度
+
+正文首段应为:
+"neuron.cooperative 在链接阶段，当同一 algorithm 单元被引用两次时，
+产生 multiple definition 链接错误，根因为 [头文件内联定义 / 
+模板显式实例化重复 / 静态库重复导出]（待确认）。
+world::io 模块为受影响的下游依赖。"
+```
+
+---
+
+## Q2 问题陈述 ❌
+
+**判定**: 不通过
+
+**问题**:
+1. **缺少最小复现路径（MRE）**。P1 Bug 必须包含：触发步骤、链接命令、完整错误日志
+2. **根因未分析**。multiple definitions 可能来源于三类问题：头文件中的非 `inline` 函数定义、模板显式特化重复、静态库被多次链接。PRD 未区分
+3. 错误信息原文未附上，无法判断是编译期还是链接期
+
+**修改建议**:
+
+```markdown
+## 问题陈述（必填）
+
+### 错误复现
+```bash
+# 链接命令
+cmake --build . --target neuron_cooperative
+# 错误输出（完整粘贴）
+ld: error: duplicate symbol: world::neuron::cooperative::AlgorithmX::run()
+    >>> defined in libA.a(algo.cpp.o)
+    >>> defined in libB.a(algo.cpp.o)
+```
+
+### 根因假设
+- [ ] 头文件中函数定义未标 `inline`
+- [ ] 显式模板实例化在多个 TU 中重复
+- [ ] CMake target 重复链接同一静态库
+```
+
+---
+
+## Q3 个体交互 ⚠️
+
+**判定**: 条件通过（需补充）
+
+**问题**:
+1. 表格中的三类个体（`StateProcessorIndividual` / `SchedulerIndividual` / `MonitorIndividual`）描述的是 **io 模块的正常工作流**，与 Bug 本身的关联未建立
+2. 缺少关键描述：**Bug 触发时个体交互链路的失败行为**。例如 `SchedulerIndividual` tick 调度在链接失败时是否会静默跳过还是崩溃？
+3. pub/sub 拓扑图展示的是正常路径，缺少 **异常状态传播路径**
+
+**修改建议**:
+
+```markdown
+## Bug 影响下的个体交互
+
+| 个体类型 | Bug 触发时行为 | 严重程度 |
+|---|---|---|
+| `StateProcessorIndividual` | 无法初始化，链接阶段失败 | 🔴 阻塞 |
+| `SchedulerIndividual` | tick 无法调度 cooperative 任务 | 🔴 阻塞 |
+| `MonitorIndividual` | 诊断通道无数据，误判为正常 | 🟡 风险 |
+
+异常传播:
+StateProcessor(链接失败) ──❌──> channel://world/io/update ──> Monitor(静默)
+```
+
+---
+
+## Q4 API 设计 ❌
+
+**判定**: 不通过
+
+**问题**:
+1. 当前 API Surface 展示的是 `world::io::Processor` 的**新功能设计**，与 Bug Fix 语义完全不符。P1 Bug 的 API 章节应展示**修复前后的对比**，而非新增接口
+2. `world::neuron::cooperative` 的 algorithm 注册/链接 API 完全缺失，而这恰恰是 Bug 的核心
+3. `Config::from_json` 无错误处理返回值（应返回 `std::expected<Config, Error>` 或抛出），这是独立设计缺陷
+
+**修改建议**:
+
+```cpp
+// ❌ 修复前（触发 multiple definitions 的用法）
+namespace world::neuron::cooperative {
+  // 在多个 TU 中均 include 此头文件时产生重复符号
+  AlgorithmHandle register_algorithm(AlgorithmDescriptor desc);
+}
+
+// ✅ 修复后
+namespace world::neuron::cooperative {
+  // 改为 inline / 移入 .cpp / 使用 extern template
+  [[nodiscard]] AlgorithmHandle 
+  register_algorithm(AlgorithmDescriptor desc) noexcept;
+  
+  // 防重复注册保护
+  bool is_registered(std::string_view algorithm_id) noexcept;
+}
+```
+
+```cpp
+// world::io 的 Config 修复建议（次要）
+static std::expected<Config, ConfigError> 
+from_json(std::string_view path) noexcept;
+```
+
+---
+
+## Q5 展示层影响 ⚠️
+
+**判定**: 条件通过（描述浅薄）
+
+**问题**:
+1. 正文提到"影响 needle-tools GLB 场景的实时刷新率"，但没有量化：**当前刷新率是多少，Bug 导致降至多少，修复目标是多少**
+2. 未说明 needle-tools（L3 展示层）是通过何种机制消费 `world::io` 输出——是 DDS/RTPS topic 订阅还是直接 API 调用？
+3. 100K+ 个体规模下链接错误是否导致展示层**完全黑屏**还是**部分个体缺失**，未说明降级策略
+
+**修改建议**:
+
+```markdown
+## L3 展示层影响（needle-tools）
+
+| 指标 | Bug 前基线 | Bug 触发后 | 修复目标 |
+|---|---|---|---|
+| GLB 场景刷新率 | 60 fps | 0（进程无法启动） | ≥ 60 fps |
+| 个体状态同步延迟 | < 16ms | N/A | < 16ms |
+| 100K 个体覆盖率 | 100% | 0% | 100% |
+
+消费路径:
+world::io::Processor 
+  ──RTPS Topic: world/io/update──> 
+    needle-tools GLB Renderer (L3 subscriber)
+
+降级策略: 链接失败时 needle-tools 应显示 
+"World Model Unavailable" 而非静默渲染空场景
+```
+
+---
+
+## 总体判定
+
+```
+┌─────────────────────────────────────────────────┐
+│  总体判定: ❌ REJECTED — 需重写后重新提审         │
+├──────────┬──────────────────────────────────────┤
+│ Q1 架构  │ ❌ 模块归属缺失，标题与正文严重错位    │
+│ Q2 问题  │ ❌ 无 MRE，无错误日志，根因未分析      │
+│ Q3 交互  │ ⚠️  个体行为描述与 Bug 脱节            │
+│ Q4 API   │ ❌ 展示新功能而非修复对比，核心 API 缺失│
+│ Q5 展示  │ ⚠️  影响有提及但无量化，消费路径不明    │
+└──────────┴──────────────────────────────────────┘
+
+阻塞项（必须修复才能进入开发）:
+1. 补充完整链接错误日志和 MRE
+2. 将正文聚焦到 neuron.cooperative 的 ODR 修复
+3. 补充修复前/后 API 对比
+4. 填写模块字段，明确 L1/L2/L3 归属
+
+建议项（可并行处理）:
+- world::io Config API 的错误处理改进
+- needle-tools 降级策略补充
+- 个体异常传播路径图
+```

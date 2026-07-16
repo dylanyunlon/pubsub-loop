@@ -1,0 +1,103 @@
+## PRD 审核报告
+
+**项目**: pub/sub-loop 类区块链世界模型个体系统
+**工单**: [BUG] Hash functions in python/neuron_parallel need to mix in class type information
+**优先级**: P1 🟡
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ❌
+
+**判定**: 不通过
+
+**问题**:
+工单标题明确指向 `python/neuron_parallel` 的 Hash 函数缺陷，但 PRD 正文将其重新定位为 `world::tools` 模块（C++ 命名空间），两者存在根本性的技术栈割裂。Python hash collision bug 是一个具体的运行时语义问题（不同类实例因缺少类型混入导致哈希碰撞），与 C++ 工具链的"构建系统/代码生成/CI-CD 基础设施"定位完全不匹配。
+
+L1 世界模型层的归属也未明确：该 bug 影响的是状态存储/索引层（个体身份唯一性），还是消息路由层（pub/sub 通道分发）？
+
+**修改建议**:
+```
+模块字段应填写: python/neuron_parallel（非 world::tools）
+架构层归属应明确:
+  - L1 世界模型：个体状态索引的哈希唯一性保障
+  - 影响路径：hash collision → 个体状态覆盖 → 世界模型数据污染
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定**: 不通过
+
+**问题**:
+这是 PRD 中最严重的缺陷。正文完全没有描述原始 Bug 的技术细节：
+
+- 哪些类受影响？（类名列表缺失）
+- 碰撞的复现条件是什么？（触发场景未描述）
+- 当前 `__hash__` 实现的具体问题在哪？（只混入字段值，未混入 `type(self)`）
+- 实际危害等级：P1 的定级依据未给出（是否已发生线上状态污染？）
+
+当前 Description 只有一句话，把 Bug 描述外包给了标题，这在 P1 级工单中不可接受。
+
+**修改建议**:
+```markdown
+## Problem Statement（必须补充）
+
+### 根因
+`python/neuron_parallel` 中以下类的 `__hash__` 实现
+仅对字段值做哈希，未混入类类型信息：
+
+受影响类（示例，需完整列举）:
+- `NeuronState`
+- `SynapseDescriptor`
+- `ParallelConfig`
+
+### 触发条件
+不同类的实例若字段值相同，将产生相同哈希值：
+  hash(NeuronState(id=1)) == hash(SynapseDescriptor(id=1))
+  → dict/set 中发生错误合并
+  → 个体状态索引污染
+
+### P1 定级依据（必须填写其中之一）
+- [ ] 已在 staging/production 观测到状态污染事件
+- [ ] 静态分析发现高频碰撞路径（附分析报告链接）
+- [ ] 多个下游模块依赖受影响类的 hash 正确性
+```
+
+---
+
+### Q3 个体交互 ⚠️（有条件通过）
+
+**判定**: 部分通过，需补充
+
+**通过点**: 个体交互模型表格结构清晰，`StateProcessorIndividual` → channel → `MonitorIndividual` 的流向图可读性良好。
+
+**问题**:
+Hash bug 的实际受害者未出现在交互模型中。`neuron_parallel` 里的类（`NeuronState` 等）才是直接受影响的个体状态载体，但表格中完全没有体现。当前三个个体角色（StateProcessor/Scheduler/Monitor）描述的是一个通用框架，与本 Bug 的相关性需要论证。
+
+另外，碰撞发生时的降级行为未定义：hash collision 发生后，pub/sub 通道的消息路由会有何异常？是静默覆盖还是抛出异常？
+
+**修改建议**:
+```markdown
+补充一行到个体交互表格：
+| `NeuronParallelIndividual` | hash 碰撞直接受害者 | 状态索引/set 存储 |
+
+补充异常路径描述：
+hash collision 发生时：
+  StateBuffer 中个体状态被静默覆盖（当前行为）
+  → 修复后应抛出 IndividualHashCollisionError 或记录诊断通道告警
+```
+
+---
+
+### Q4 API 设计 ❌
+
+**判定**: 不通过
+
+**问题**:
+这是本 PRD 与 Bug 工单偏离最大的地方。当前 API Surface 展示的是一套全新的 C++ `world::tools::Processor` 接口，但原始 Bug 要修复的是 Python `__hash__` 方法。两者完全不相关。
+
+具体问题：
+1. `Config`/`Processor` 这套 C++ API 从何而来？PRD 正文没

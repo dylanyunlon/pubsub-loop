@@ -1,0 +1,39 @@
+## PRD审核报告
+
+**项目**: pub/sub-loop | **审核对象**: BUG: tensor_parallel::merge_by_key crashes on large data blocks
+
+---
+
+### Q1 架构定位 ✅
+
+`world::data` 模块归属清晰，定位为世界模型数据层的状态融合管道。但有一处**命名张力**需关注：
+
+> 标题写的是 `tensor_parallel::merge_by_key`，正文却落在 `world::data::Processor` 上。
+
+这说明 **崩溃根因** 在 `tensor_parallel` 子系统，而 **修复边界** 被定义在 `world::data`。两者关系未在正文中说明——是 `world::data` 调用了 `tensor_parallel`，还是二者并列？架构定位在概念上成立，但**模块依赖链缺失**。
+
+---
+
+### Q2 问题陈述 ❌
+
+这是本单最大缺陷。一个 P1 Bug 工单，问题陈述完全缺位：
+
+| 缺失项 | 当前状态 |
+|---|---|
+| 崩溃复现条件 | ❌ "large data blocks" 无量化定义（多大？） |
+| 崩溃现象 | ❌ segfault / assertion / UB？ |
+| 复现率 | ❌ 必现还是偶发？ |
+| 受影响版本/平台 | ❌ 完全缺失 |
+| Stacktrace / core dump | ❌ 无 |
+| `tensor_parallel` 与修复范围的关联 | ❌ 未解释 |
+
+正文的 pub/sub 上下文描述是**功能背景介绍**，不是问题陈述。审核员无法从中判断 Bug 的严重程度是否匹配 P1 定级。
+
+---
+
+### Q3 个体交互 ✅⚠️
+
+交互表格结构规范，`StateProcessorIndividual → channel → MonitorIndividual` 的 pub/sub 拓扑清晰。但：
+
+- `SchedulerIndividual` 的 **CRoutine tick** 与 Bug 修复的关联未说明——调度节律是否会触发大数据块场景？
+- **Bug 修复语境下** 个体交互模型应该说明：崩溃发

@@ -1,0 +1,165 @@
+## PRD审核报告
+
+**工单**: [BUG]: assertion failure in examples/basic/example.cu
+**审核员**: pub/sub-loop PRD审核系统
+**日期**: 2026-07-16
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ❌
+
+**判定**: 不通过
+
+**问题**:
+标题声称是 `assertion failure` 的 BUG 修复，但正文完全没有描述断言失败的现象、复现路径或根因分析。模块字段标注为 `?`，但正文又大量描述 `world::io` 的新功能设计（Config struct、Processor class、SIMD支持）。这是**BUG工单还是Feature工单？两者混淆**。
+
+L1世界模型定位模糊：`world::io` 被描述为"I/O层"，但同时承担状态处理、TopK选择、流式编解码、管道并行——职责过载，不符合 L1 作为状态广播基础层的单一职责原则。
+
+**修改建议**:
+- 拆分为两张工单：`[BUG]` 专注断言失败复现与修复；`[FEAT]` 描述 `world::io` 模块重构
+- 明确模块字段：`world::io`
+- BUG工单补充：失败堆栈、CUDA版本、复现命令、断言触发条件
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定**: 不通过
+
+**问题**:
+BUG的核心——**断言失败的具体内容完全缺失**。一份合格的BUG PRD必须包含：
+
+- 断言表达式是什么（`assert(x != nullptr)` 还是 `CUDA_CHECK`？）
+- 触发栈帧
+- 最小复现代码（`example.cu` 的哪几行）
+- 期望行为 vs 实际行为
+
+当前正文跳过了所有这些，直接进入了功能设计阶段。"缺陷修复目标"只是标签，不是问题陈述。
+
+**修改建议**:
+
+```markdown
+## Bug Report
+- **断言表达式**: `assert(condition)` @ example.cu:LINE
+- **复现命令**: `./example --config x`
+- **期望**: 正常退出
+- **实际**: assertion failure, core dump
+- **环境**: CUDA 12.x, gcc 13, RTX 4090
+- **频率**: 100% / 偶发（需注明）
+```
+
+---
+
+### Q3 个体交互 🟡
+
+**判定**: 部分通过，需补充
+
+**问题**:
+个体交互表格结构清晰，三类个体（StateProcessor / Scheduler / Monitor）的角色划分合理，pub/sub 拓扑图简洁。**但存在以下缺口**：
+
+- `SchedulerIndividual` 的 CRoutine tick 频率未定义，与 `world::io` 处理延迟的时序关系不明
+- `MonitorIndividual` 通过"诊断通道"订阅，但诊断通道的 channel URI 未声明
+- 100K+ 个体场景下，单一 `channel://world/io/update` 是否存在背压（backpressure）机制未说明
+- 个体失联/崩溃时的状态一致性保证缺失
+
+**修改建议**:
+
+```markdown
+| 个体类型 | tick频率 | 背压策略 | 失联处理 |
+|---|---|---|---|
+| StateProcessorIndividual | 20Hz | drop-oldest | 状态冻结 |
+| SchedulerIndividual | 100Hz | N/A | 重调度 |
+| MonitorIndividual | 1Hz | 聚合采样 | 告警 |
+```
+
+补充诊断通道 URI：`channel://world/io/diagnostics`
+
+---
+
+### Q4 API设计 🟡
+
+**判定**: 部分通过，需补充
+
+**问题**:
+API草图显示了基本意图，但作为 P1 BUG 修复工单，这里的 API 设计超出了修复范围，应属于独立 FEAT 工单。就 API 本身评审：
+
+**结构问题**:
+- `process_tick` 返回 `StateView`——View 语义意味着持有对 `StateBuffer` 的引用，但 `StateBuffer` 是局部入参，生命周期存在悬空风险，这本身可能就是断言失败的根因
+- `Config::from_json` 是静态工厂，但 `Config` 是值类型，异常路径未定义（返回默认值？抛出？）
+- `initialize()` 返回 `bool` 但无错误信息，不符合现代 C++ 错误处理规范
+
+**修改建议**:
+
+```cpp
+namespace world::io {
+
+// StateView 需明确生命周期语义
+class StateView {
+    // 选项A: 值语义（拷贝）—— 安全但有开销
+    // 选项B: shared ownership —— std::shared_ptr<StateBuffer>
+    // 选项C: 明确标注 caller 保证 StateBuffer 存活
+};
+
+// initialize 改为 Result 类型
+std::expected<void, InitError> initialize();
+
+// Config 工厂明确异常策略
+static std::expected<Config, ParseError> from_json(std::string_view p);
+
+}
+```
+
+example 代码中 `proc.initialize()` 返回值被丢弃——这可能正是断言失败的直接原因，**需要在BUG描述中确认**。
+
+---
+
+### Q5 展示层影响 ✅
+
+**判定**: 通过（有条件）
+
+**问题**:
+正文明确说明了 L3 展示层影响路径：`world::io` 处理效率 → 状态更新频率 → needle-tools GLB 场景实时刷新率。这是三层架构中少见的**跨层影响链条描述**，值得肯定。
+
+**待补充**:
+- GLB 场景刷新率的具体基线数值（当前 Xfps → 目标 Yfps）
+- needle-tools 订阅端的帧同步策略（是否容忍状态跳帧）
+- BUG状态下展示层的降级表现（卡死？乱序渲染？）
+
+---
+
+## 总体判定
+
+```
+┌─────────────────────────────────────────────────────┐
+│  总体判定: ❌ 退回修改 (REJECT - NEEDS REVISION)    │
+└─────────────────────────────────────────────────────┘
+```
+
+| 维度 | 得分 | 权重 | 加权 |
+|---|---|---|---|
+| Q1 架构定位 | 2/5 | 25% | 0.10 |
+| Q2 问题陈述 | 1/5 | 30% | 0.06 |
+| Q3 个体交互 | 3/5 | 20% | 0.12 |
+| Q4 API设计 | 3/5 | 15% | 0.09 |
+| Q5 展示层影响 | 4/5 | 10% | 0.08 |
+| **总分** | | | **0.45 / 1.0** |
+
+**准入线: 0.70**，当前 **0.45**，未达标。
+
+---
+
+## 核心行动项（按优先级）
+
+**必须修复（阻塞准入）**:
+
+1. **工单拆分** — BUG与FEAT强制分离，当前工单聚焦断言失败复现
+2. **补充断言现场** — 错误信息、堆栈、复现命令、环境信息缺一不可
+3. **StateView 生命周期声明** — 厘清悬空引用风险是否为根因
+
+**建议补充（提升质量）**:
+
+4. 个体交互表补充 tick频率、背压策略、失联处理列
+5. `initialize()` 丢弃返回值的问题在BUG分析中显式确认或排除
+6. 展示层补充刷新率基线数值

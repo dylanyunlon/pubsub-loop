@@ -1,0 +1,86 @@
+# PRD审核报告
+
+**工单**: `[BUG]: Calling pipeline_parallel::DeviceRadixSort::SortKeys fails with invalid device function`
+**优先级**: P1 🟡 | **模块**: `world::io`
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ✅⚠️
+
+工单将自身定位于 `world::io`（L1世界模型的I/O层），与 pub/sub-loop 框架声称对齐。
+
+**但存在定位模糊**：标题暴露的是 `pipeline_parallel::DeviceRadixSort::SortKeys` 的 CUDA 运行时错误（`invalid device function`），这是一个**编译目标不匹配或设备架构错误**，属于 GPU kernel 编译/链接层面的低级缺陷——并非 `world::io` 的语义缺陷。两者之间的映射关系**未被论证**，正文没有解释 `DeviceRadixSort` 如何归属于 `world::io` 模块边界。
+
+---
+
+### Q2 问题陈述 ❌
+
+这是本工单最严重的缺陷。
+
+| 项目 | 现状 |
+|---|---|
+| 错误复现路径 | ❌ 缺失 |
+| 触发条件（GPU架构/CUDA版本/编译flags） | ❌ 缺失 |
+| 错误信息原文 / stack trace | ❌ 缺失 |
+| 预期行为 vs 实际行为 | ❌ 缺失 |
+| 最小复现样例 | ❌ 缺失 |
+
+正文完全跳过了 BUG 的事实描述，直接进入架构叙述。`invalid device function` 是一类典型的 **sm_架构不匹配错误**（如用 sm_89 编译的 kernel 跑在 sm_75 设备上），或 **cuBIN 未正确链接**。这些关键诊断信息一条未提，导致 Sub-tasks 中的"核心实现"无从落地。
+
+---
+
+### Q3 个体交互 ✅⚠️
+
+交互模型表格和 pub/sub 拓扑图结构清晰，三类个体（`StateProcessorIndividual` / `SchedulerIndividual` / `MonitorIndividual`）角色分工合理。
+
+**但与 BUG 本体脱节**：`DeviceRadixSort::SortKeys` 的失败发生在哪个个体的执行路径上？是 `StateProcessorIndividual` 在 `process_tick` 内部调用了它？还是离线批处理阶段？个体交互模型与故障点之间**没有因果连接**。
+
+---
+
+### Q4 API 设计 ✅⚠️
+
+```cpp
+StateView process_tick(const StateBuffer& s, uint64_t tick);
+```
+
+接口风格符合 pub/sub-loop 规范，命名空间对齐 `world::io`，Config 结构合理。
+
+**三处待澄清**：
+
+1. `StateView` 的生命周期语义未定义——返回 view 时 `StateBuffer` 必须保持存活，悬垂引用风险需在文档中显式标注
+2. `DeviceRadixSort` 既然是 BUG 触发点，它在 `Processor` 内部的位置完全不可见，API Surface 未暴露任何 GPU 资源管理接口（stream / device context）
+3. `from_json` 缺少错误处理签名（返回值 or exception？）
+
+---
+
+### Q5 展示层影响 ✅
+
+```
+io 模块处理效率 → 100K+ 个体状态更新频率 → needle-tools GLB 场景实时刷新率
+```
+
+因果链描述正确，needle-tools（L3）对 L1 `world::io` 吞吐率的依赖关系在项目架构中成立。P1 优先级与"实时刷新率退化"的展示层影响相匹配。
+
+---
+
+## 总体判定
+
+```
+❌ 不通过 — 需补充后重审
+```
+
+**核心阻断原因（必须修复才能进入开发）**：
+
+**Q2 是硬阻断。** 这是一个 BUG 工单，但没有 BUG 的任何实质内容。开发者拿到此工单无法定位问题，`Sub-tasks: 核心实现（Mixed）` 会变成空转。
+
+**必须补充**：
+
+1. `invalid device function` 的完整错误信息 + 调用栈
+2. 复现环境：GPU 型号、CUDA 版本、编译命令中的 `-arch` / `-gencode` flags
+3. `DeviceRadixSort::SortKeys` 在 `world::io` 中的调用位置（文件/行号）
+4. 最小复现代码或触发场景描述
+5. 明确说明 `pipeline_parallel` 命名空间与 `world::io` 的归属关系
+
+**建议动作**：退回给提单人，要求按上述 5 项补充后重新提审。架构包装完整，但 BUG 事实为零，是典型的**"架构外衣包裹空洞问题陈述"**反模式。

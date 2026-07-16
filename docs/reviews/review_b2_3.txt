@@ -1,0 +1,114 @@
+# PRD 审核报告
+
+**工单**: `[BUG]: Sporadic test failure in test_unique_by_key.py::test_unique_by_key`
+**优先级**: P1 🟡 | **模块**: world::tools
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ❌
+
+**判定依据**: 架构层归属自相矛盾，无法定位。
+
+- 正文声称 `world::tools` 是「世界模型工具链」，暗示 L1 层基础设施
+- 但 `Config/Processor` API 做的是 `process_tick` + `StateView` 处理，行为更像 L2 决策层
+- `test_unique_by_key.py` 是 Python 测试文件，而 API Surface 全部是 C++ 命名空间，**语言层不一致，归属层未厘清**
+- `world::tools` 在 L1/L2/L3 三层中**无明确坐标**，模块字段填写为 `?` 本身即为信号
+
+**需补充**: 明确 `world::tools` 是哪一层的支撑模块，以及 Python 测试文件与 C++ 实现的关系。
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定依据**: BUG 的实际故障信息缺失，问题无法复现和定位。
+
+| 必要项 | 现状 |
+|---|---|
+| 失败复现率/频率 | ❌ 未提供（"sporadic" 无量化） |
+| 失败日志/堆栈 | ❌ 完全缺失 |
+| 触发条件 | ❌ 未描述（平台？并发？数据集？） |
+| `test_unique_by_key` 测什么 | ❌ 未说明 |
+| 期望行为 vs 实际行为 | ❌ 未对比 |
+
+正文将一个**具体 BUG 工单**包装成了功能需求模板（Sub-tasks 包含「需求分析与接口设计」「核心实现 Mixed」），**BUG 修复与功能开发模板混用**，问题陈述实质上不存在。
+
+---
+
+### Q3 个体交互 ⚠️ 有条件通过
+
+**判定依据**: 结构合理但与本工单脱节。
+
+- 三类个体角色（StateProcessor / Scheduler / Monitor）定义清晰，pub/sub 拓扑图可读
+- **但**: 这三个个体与 `test_unique_by_key` 的失败**无任何关联描述**
+- `unique_by_key` 语义（去重？键唯一性约束？）在个体交互模型中**找不到对应操作**
+- `SchedulerIndividual` 的 CRoutine tick 调度与 sporadic failure 的并发场景**有潜在关联但未展开**
+
+**结论**: 个体模型本身格式合格，但未服务于本工单的 BUG 定位目标。
+
+---
+
+### Q4 API 设计 ❌
+
+**判定依据**: API 与 BUG 无关，且设计本身存在问题。
+
+```cpp
+// 问题1: process_tick 返回 StateView —— 是否持有悬空引用？
+StateView process_tick(const StateBuffer& s, uint64_t tick);
+// StateView 是 view 语义（非拥有），StateBuffer 生命周期需明确
+
+// 问题2: Config 缺少关键字段
+struct Config { size_t individual_capacity=10000; ... };
+// unique_by_key 的"key"类型、去重策略、冲突处理均未在 Config 中体现
+
+// 问题3: get_stats() const 与 TSAN 要求冲突风险
+// 多线程读 stats 需要明确 memory_order 或 lock 策略
+```
+
+- `unique_by_key` 相关的 API（key 提取器、唯一性语义）**在 API Surface 中完全缺席**
+- 展示的 API 是通用 Processor，与工单标题的具体函数**零重叠**
+
+---
+
+### Q5 展示层影响 ❌
+
+**判定依据**: needle-tools / L3 影响未评估，GLB 输出链路断裂风险未量化。
+
+- 正文提到「needle-tools 集成测试」和「从源码到 GLB 动态输出的完整交付链路」
+- 但 Acceptance Criteria **无一条涉及 L3 展示层验证**
+- `StateView` → needle-tools 渲染路径：若 `unique_by_key` 在去重环节失败，L3 是否会收到重复状态帧？**影响未评估**
+- 「个体动态输出场景验证通过」过于泛化，**无具体的 L3 验收指标**
+
+---
+
+## 总体判定
+
+```
+┌─────────────────────────────────────────┐
+│  总体判定: ❌ 不予准入                    │
+│  建议: 退回重写，降级为 Bug Report 模板   │
+└─────────────────────────────────────────┘
+```
+
+| 维度 | 结果 | 核心问题 |
+|---|---|---|
+| Q1 架构定位 | ❌ | 层归属不明，Python/C++ 混淆 |
+| Q2 问题陈述 | ❌ | BUG 信息缺失，套用功能模板 |
+| Q3 个体交互 | ⚠️ | 结构合格但与 BUG 无关联 |
+| Q4 API 设计 | ❌ | unique_by_key API 缺席，存在生命周期风险 |
+| Q5 展示层影响 | ❌ | L3 影响未评估，验收标准泛化 |
+
+**根本问题**: 这是一个**用功能需求 PRD 模板填写的 BUG 工单**。`test_unique_by_key` 的实际失败原因、堆栈、复现步骤在整个文档中**一字未提**。
+
+---
+
+## 修复建议（最小可准入版本）
+
+重写时需补充以下内容：
+
+1. **BUG 最小复现**: 失败频率、平台、触发条件（是否并发？数据规模？）
+2. **失败日志**: pytest 输出或 TSAN 报告原文
+3. **`unique_by_key` 语义说明**: 该函数/测试在 pub/sub-loop 中的角色
+4. **L3 影响评估**: 若去重失败，needle-tools 收到的状态流变化
+5. **模块字段**: 从 `?` 明确为具体路径（如 `world::tools::state_dedup`）

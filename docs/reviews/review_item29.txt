@@ -1,0 +1,169 @@
+## PRD 审核报告
+
+**项目**: pub/sub-loop 世界模型个体系统
+**工单**: [BUG] tensor_parallel/execution_policy.h 编译安全性
+**审核日期**: 2026-07-16
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ❌
+
+**判定依据**: 模块字段填写为 `?`，且定位存在根本性混乱。
+
+**问题**:
+- 标题是 C++ 头文件编译安全性 BUG（host compiler 不能包含 GPU 并行头文件），这是一个**编译器/构建系统层**问题，与 `world::io` I/O 通道的 L1 架构定位不符
+- 正文将 "批量 TopK 选择、流式编解码、管道并行处理" 混入 `world::io` 定位，职责边界模糊——TopK 属于决策推断层（L2），不应归入 I/O 通道
+- BUG 根因（`execution_policy.h` 被 host compiler 包含）未说明其在 L1/L2/L3 哪一层触发
+
+**修改建议**:
+```
+模块: world::io / build-system
+L1 归属: world::io 状态传输原语
+BUG 触发层: 构建系统（host compiler 隔离边界）
+根因一句话: tensor_parallel 头文件包含了 device-only 符号，
+           在 host-only 编译单元中触发链接错误，
+           需在 world::io 的 CMake target 中
+           隔离 CUDA/device 依赖。
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定依据**: BUG 的实际失效场景、复现路径、错误信息全部缺失。
+
+**问题**:
+- 没有**最小复现步骤**（MRE）：哪个 `.cpp` 包含了该头文件？用什么编译器/工具链触发？
+- 没有**错误信息原文**：编译器报错是 `undefined symbol`、`__device__` 关键字报错，还是 `#error` 宏守卫触发？
+- "is not safe to include" 是断言还是运行时崩溃？边界完全未定义
+- 影响范围未说明：仅影响特定平台（x86 host-only build）还是所有 non-CUDA target？
+
+**修改建议**:
+
+```markdown
+### 复现路径
+1. 环境: Ubuntu 22.04, GCC 12, CUDA 未启用 (cmake -DUSE_CUDA=OFF)
+2. 触发: `#include "tensor_parallel/execution_policy.h"`
+         在任意 host-only .cpp 编译单元中
+3. 错误: error: 'cudaLaunchKernel' was not declared in this scope
+          (或粘贴实际编译器输出)
+4. 影响范围: world::io 所有 non-GPU build target
+
+### 期望行为
+host compiler 编译 world::io 时不应传递任何 device-only 符号
+```
+
+---
+
+### Q3 个体交互 ⚠️ 部分通过
+
+**判定依据**: 表格结构完整，channel 拓扑清晰，但与 BUG 主体关联薄弱。
+
+**通过项**:
+- `StateProcessor → channel://world/io/update → Monitor` 拓扑合理
+- 三类个体（StateProcessor / Scheduler / Monitor）职责划分清晰
+- pub/sub 同步方式与 RTPS 广播模型一致
+
+**问题**:
+- 该 BUG 影响的是**哪个个体的编译单元**？`StateProcessorIndividual` 是否直接 include 了问题头文件？
+- `SchedulerIndividual` 的 CRoutine tick 在 host-only 构建下是否也受影响？
+- 没有说明修复后个体交互模型是否有变化（如 API 签名调整）
+
+**修改建议**:
+```
+在表格新增一列「受 BUG 影响」:
+StateProcessorIndividual ✅ 直接受影响（包含路径需修复）
+SchedulerIndividual      ❓ 待确认
+MonitorIndividual        ✅ 诊断通道依赖 io 编译产物
+```
+
+---
+
+### Q4 API 设计 ❌
+
+**判定依据**: API 设计与 BUG 根因完全脱节，且自身存在规范问题。
+
+**问题**:
+- 这是一个**编译安全性 BUG**，核心 fix 是头文件隔离或 CMake 依赖裁剪，但 API Surface 却展示了 `Processor` 类的业务接口——两者没有因果关系
+- `Config::from_json` 是静态工厂方法，但签名用 `std::string_view p` 命名参数为 `p` 过于简略，应为 `path_or_json`
+- `StateView process_tick(...)` 返回轻量视图对象，但生命周期约束未标注（是否依赖 `StateBuffer` 生命周期？）
+- 缺少与 BUG 直接相关的**修复接口**，例如：
+
+**修改建议**:
+
+```cpp
+// 应补充：修复的核心是构建层隔离，而非新增业务 API
+// 在头文件层面的修复示意：
+
+// tensor_parallel/execution_policy.h (修复后)
+#pragma once
+#if defined(__CUDACC__) || defined(__HIP__)
+  // device-only 实现
+  #include "detail/cuda_execution_policy.h"
+#else
+  // host-only 存根，防止 device 符号泄漏
+  namespace tensor_parallel {
+    struct execution_policy { /* host-safe stub */ };
+  }
+#endif
+
+// CMakeLists.txt 修复示意
+target_link_libraries(world_io
+  PRIVATE
+    $<$<BOOL:${USE_CUDA}>:tensor_parallel_cuda>  # 按需链接
+)
+```
+
+---
+
+### Q5 展示层影响 ⚠️ 部分通过
+
+**判定依据**: 提及了 needle-tools GLB 场景刷新率，方向正确，但量化不足。
+
+**通过项**:
+- 明确点出 100K+ 个体规模下 I/O 效率对 L3 展示层的影响链路
+- "实时刷新率" 与 DDS/RTPS 广播状态的设计目标一致
+
+**问题**:
+- 这是**编译 BUG 修复**，不是性能优化——为何会影响 needle-tools 刷新率？影响路径未闭合
+- 如果当前 BUG 导致 world::io 在 non-CUDA 构建下**完全无法编译**，那展示层影响是"完全不可用"，应该明确说明
+- 没有定义 L3 的回归测试基线（帧率？延迟？状态同步延迟阈值？）
+
+**修改建议**:
+```markdown
+### 展示层影响说明
+当前影响: non-CUDA 构建下 world::io 编译失败，
+          needle-tools 无法获取状态更新，GLB 场景静止
+修复后验证: 
+  - [ ] needle-tools 状态订阅延迟 < 16ms（60fps 基线）
+  - [ ] 100K 个体场景下 GLB 刷新无卡顿（基准: XX fps）
+  - [ ] CUDA-off 构建路径全量回归通过
+```
+
+---
+
+## 总体判定
+
+```
+┌─────────────────────────────────────────────────────┐
+│  总体结论: ❌ 不予准入，需重大修订后重审             │
+├──────────┬──────────────────────────────────────────┤
+│ Q1 架构  │ ❌ 模块未定，BUG 层次与 L1 定位错位      │
+│ Q2 问题  │ ❌ 无 MRE，无错误信息，失效边界未定义    │
+│ Q3 个体  │ ⚠️ 结构完整但未关联 BUG 影响个体        │
+│ Q4 API   │ ❌ API 设计与 BUG fix 脱节，缺核心修复   │
+│ Q5 展示  │ ⚠️ 影响链路未闭合，缺回归基线           │
+└──────────┴──────────────────────────────────────────┘
+```
+
+**核心问题**: 本工单存在**身份分裂**——标题是编译系统 BUG，正文是 I/O 模块功能设计 PRD。两条线索互不支撑。
+
+**建议处置路径**:
+
+> **路径 A（推荐）**: 拆分为两个工单
+> - `[BUG]` tensor_parallel host-compiler 隔离修复（专注构建层 fix + MRE）
+> - `[FEAT]` world::io Processor API 设计与实现（专注业务接口）
+>
+> **路径 B**: 保持单工单，但须补齐 Q2 MRE 和 Q4 的 CMake/头文件隔离方案，并删除与 BUG 无关的业务 API 设计内容，移入单独 FEAT 工单

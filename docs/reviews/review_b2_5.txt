@@ -1,0 +1,173 @@
+## PRD 审核报告
+
+**工单**: [BUG][STF] Enabling P2P accesses fails if the application already enabled it
+**审核员**: pub/sub-loop 项目 PRD 审核员
+
+---
+
+## 逐条判定
+
+### Q1 架构定位 ❌
+
+**判定理由**: 架构定位存在根本性错位。
+
+工单标题明确是 **P2P 访问重复启用导致失败** 的 Bug，但 PRD 正文描述的是 `world::io` 的**批量 TopK、流式编解码、管道并行处理**等全新功能模块——这是两个截然不同的问题域。
+
+- 标题暗示：存量功能的**幂等性/状态机缺陷**，属 L1 世界模型的连接层
+- 正文描述：`world::io` 的**新能力建设**，属 I/O 吞吐优化
+
+**修改建议**:
+```
+// 当前（错误）
+世界模型 I/O 层——高吞吐个体状态数据的输入/输出通道，
+包括批量 TopK 选择、流式编解码、管道并行处理
+
+// 修改为
+L1 world model 连接子系统缺陷：P2P 访问启用接口
+在「已启用」状态下被重复调用时，状态机未做幂等保护，
+导致连接通道异常关闭/重置，影响个体间 DDS/RTPS 广播。
+```
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定理由**: 完全缺失 Bug 的关键三要素。
+
+| 必要元素 | 当前状态 |
+|---|---|
+| 复现路径 (STR) | ❌ 无 |
+| 实际行为 (Actual) | ❌ 无 |
+| 期望行为 (Expected) | ❌ 无 |
+| 错误码 / 崩溃堆栈 | ❌ 无 |
+| 首次出现版本 / commit | ❌ 无 |
+
+正文用"缺陷修复目标"一笔带过，对"为什么失败"没有任何说明。P1 级别的 Bug 尤其不允许这样的模糊陈述。
+
+**修改建议**（补充 Description 结构）:
+```markdown
+### 问题陈述
+**STR（复现步骤）**:
+1. 应用调用 `enable_p2p_access()` 成功，返回 OK
+2. 同一进程生命周期内再次调用 `enable_p2p_access()`
+3. 第二次调用返回错误 / panic / 静默失败
+
+**Actual**: 第二次调用触发 [具体错误，如 assert / errno / exception]
+**Expected**: 第二次调用应幂等返回 OK，或返回 AlreadyEnabled 错误码并保持通道稳定
+**影响范围**: 个体重连场景、热重载场景下 DDS/RTPS 广播中断
+**首现**: commit xxxx / version x.y.z
+```
+
+---
+
+### Q3 个体交互 ⚠️ 条件通过
+
+**判定理由**: 表格结构合理，三类个体角色划分清晰，pub/sub 流向图也符合项目规范。但存在两个问题：
+
+1. **与 Bug 语义脱节**：表格描述的是正常路径交互，未体现 P2P 重复启用时哪个个体的哪条交互链路会断裂
+2. **`SchedulerIndividual` 的 tick 在 P2P 失败时的降级行为未说明**
+
+**修改建议**:
+```markdown
+// 在表格后追加故障路径描述
+### 故障交互路径
+当 enable_p2p_access() 第二次被调用失败时：
+- StateProcessorIndividual 的 pub 操作将在 channel://world/io/update 
+  上收到 broken_pipe / connection_reset
+- MonitorIndividual 的诊断通道需捕获此异常并上报
+- SchedulerIndividual 的 tick 应在连接恢复前进入 back-off 等待，
+  而非无限重试导致 CPU 空转
+```
+
+---
+
+### Q4 API 设计 ❌
+
+**判定理由**: API 与 Bug 主题完全无关，且设计本身存在问题。
+
+**相关性问题**:
+`world::io::Processor` / `Config` / `process_tick` 是 I/O 处理器接口，与 P2P 访问启用的幂等性修复没有任何关联。Bug Fix 类工单的 API Surface 应聚焦于**出问题的接口本身**。
+
+**设计问题**（假设这是正确 API）:
+
+```cpp
+// ❌ 当前问题1：Config 构造后无法区分"未初始化"和"已初始化"
+class Processor {
+    bool initialize(); // 重复调用行为未定义——这正是 Bug 的根因模式！
+};
+
+// ❌ 当前问题2：process_tick 返回 StateView（悬空引用风险）
+StateView process_tick(const StateBuffer& s, uint64_t tick);
+// StateView 指向谁的内存？生命周期？
+
+// ✅ 修改建议
+enum class InitResult { Ok, AlreadyInitialized, Error };
+
+class Processor {
+public:
+    InitResult initialize();  // 明确幂等语义
+    std::expected<StateView, Error> process_tick(
+        const StateBuffer& s, uint64_t tick);  // 显式错误传播
+};
+```
+
+**Bug Fix 应有的 API Surface**:
+```cpp
+// 需要展示的是出问题的 P2P 接口
+namespace world::transport {
+    // 修复前（问题行为）
+    Status enable_p2p_access(const P2PConfig&);  // 重复调用 UB
+
+    // 修复后（幂等语义）
+    Status enable_p2p_access(const P2PConfig&);  
+    // 已启用时返回Status::AlreadyEnabled，通道保持稳定
+}
+```
+
+---
+
+### Q5 展示层影响 ⚠️ 条件通过
+
+**判定理由**: 提到了"needle-tools GLB 场景的实时刷新率"，方向正确，但缺乏量化和降级策略。
+
+**当前表述**:
+> io 模块的处理效率直接决定大规模世界（100K+ 个体）的状态更新频率，影响 needle-tools GLB 场景的实时刷新率
+
+**问题**:
+1. 100K+ 个体是容量上限还是测试规模？未说明
+2. "实时刷新率"的基线是多少？P2P 断连时刷新率降为多少？
+3. L3 展示层在 P2P 失败期间是否有降级展示方案（如灰显个体、显示 last-known-state）？
+
+**修改建议**:
+```markdown
+### L3 展示层影响评估
+| 场景 | 正常状态 | P2P 失败时 | 修复后 |
+|---|---|---|---|
+| 个体状态刷新率 | 60Hz | 0Hz（断流） | 恢复 60Hz |
+| needle-tools GLB | 实时位置 | 停留最后帧 | 重连后恢复 |
+| 降级策略 | — | 显示 ⚠️ 失联标记 | — |
+
+测试规模：10K 个体（CI）/ 100K 个体（压测）
+```
+
+---
+
+## 总体判定
+
+```
+┌─────────────────────────────────────────────┐
+│          总体判定：❌ 不予准入               │
+│          得分：2 / 5 条件通过               │
+└─────────────────────────────────────────────┘
+```
+
+**核心问题**: 这是一个**标题与正文严重错位**的工单。标题是存量 Bug（P2P 幂等性），正文是新功能建设（io 模块能力）。两者混写导致开发者无法判断实际工作内容，P1 优先级下这是高危风险。
+
+**返工要求（阻塞准入）**:
+
+1. **必须明确**：这是 Bug Fix 还是 Feature？若为 Bug Fix，删除所有新功能描述，补充 STR/Actual/Expected
+2. **必须补充**：P2P 接口的失败堆栈或错误码，以及首现 commit
+3. **必须修正**：API Surface 替换为实际出问题的 `enable_p2p_access` 接口及其幂等修复方案
+4. **建议补充**：L3 降级展示的量化指标和恢复策略
+
+**模块字段为 `?`** 也需在返工时填写（应为 `world::transport` 或 `world::io`，取决于上述澄清结果）。

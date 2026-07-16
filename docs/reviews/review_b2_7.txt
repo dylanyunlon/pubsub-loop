@@ -1,0 +1,109 @@
+## PRD 审核报告
+
+**标题**: [BUG]: Investigate nvcc 12.9 segfault when building STF header unittests
+**优先级**: P1 🟡 | **模块**: `world::tools`
+
+---
+
+### Q1 架构定位 ❌
+
+**判定**: 不合格
+
+标题与正文存在**根本性定位撕裂**。
+
+- 标题是具体的编译器 Bug 调查（nvcc 12.9 + STF header → segfault），属于 **L0 工具链缺陷**
+- 正文却构建了完整的 `world::tools::Processor` API、pub/sub 通道、个体交互模型，定位在 **L1 世界模型功能模块**
+
+两者不是同一件事。一个 nvcc segfault 调查的 PRD 不应该包含 `StateView process_tick(...)` 的 API 设计——除非已确认 segfault 根因在于 API 本身，但正文没有给出这个论证链。
+
+---
+
+### Q2 问题陈述 ❌
+
+**判定**: 不合格
+
+缺陷类需求对问题陈述要求极高，但本 PRD 完全缺失：
+
+| 必要字段 | 现状 |
+|---|---|
+| 复现步骤 | ❌ 无 |
+| 触发环境（nvcc 12.9 + 哪个平台/驱动/CUDA版本） | ❌ 无 |
+| 崩溃堆栈 / core dump 摘要 | ❌ 无 |
+| STF header 指具体哪个头文件 | ❌ 无 |
+| 已排查方向 | ❌ 无 |
+
+"Investigate" 类 Bug 的 PRD 核心价值是**缩小问题空间**，现有正文用通用模板填充了一个没有诊断信息的壳，P1 优先级下这是严重缺陷。
+
+---
+
+### Q3 个体交互 ⚠️
+
+**判定**: 形式合格，内容错位
+
+个体交互表格结构完整（`StateProcessorIndividual` / `SchedulerIndividual` / `MonitorIndividual`），pub/sub 拓扑图清晰。
+
+但与本 Bug 的因果关系为零——nvcc 编译期 segfault 发生在构建阶段，与运行时个体交互模型无关。这部分内容像是从其他 Feature PRD 复制粘贴，**对定位和修复 nvcc segfault 没有任何指导价值**。
+
+---
+
+### Q4 API 设计 ❌
+
+**判定**: 不合格
+
+```cpp
+class Processor {
+  StateView process_tick(const StateBuffer& s, uint64_t tick);
+  PerformanceStats get_stats() const;
+};
+```
+
+对一个编译器 segfault 调查任务而言，这份 API 设计存在根本性问题：
+
+1. **因果倒置**：应该先查清 segfault 根因（模板实例化爆炸？CUDA 设备代码与 host 代码边界？头文件循环包含？），再决定 API 是否需要修改
+2. **`StateView` 所有权语义未定义**：返回 view 还是 value，生命周期归属不明
+3. **`StateBuffer` 类型未声明**：与现有 `world::` 命名空间的关系不明
+4. **与 Bug 修复的验收标准脱节**：AC 里有 ASAN/TSAN，但 nvcc segfault 通常需要 `cuda-memcheck` / `compute-sanitizer`，API 层面无法覆盖
+
+---
+
+### Q5 展示层影响 ⚠️
+
+**判定**: 条件合格
+
+needle-tools 集成测试的提及是合理的——构建系统修复后需要验证 L3 展示层的 GLB 动态输出链路不受影响。但描述停留在"个体动态输出场景验证通过"这一泛化表述，缺乏：
+
+- 具体的 needle-tools 测试 case 编号或场景描述
+- 与 nvcc 12.9 修复的直接关联（为何此 segfault 会影响展示层输出）
+
+---
+
+## 总体判定
+
+### ❌ 不予准入
+
+**核心问题：这不是一个 PRD，是两个不同文档的强行合并。**
+
+```
+标题层  →  nvcc 12.9 编译器 Bug 调查（工具链缺陷）
+正文层  →  world::tools 功能模块设计（架构建设）
+```
+
+两条线索在文档中**平行存在、互不支撑**。
+
+---
+
+### 返修要求（按优先级）
+
+**必须修复（Blocker）**
+
+1. **二选一，明确文档类型**
+   - 路径A：纯 Bug 调查 → 补充堆栈、复现步骤、nvcc 版本矩阵，删除 API 设计节
+   - 路径B：功能模块 PRD → 新建独立 Feature ticket，将 nvcc segfault 作为前置依赖项引用
+
+2. **补充最小复现信息**：至少包含 `nvcc --version`、触发命令、崩溃信号类型（SIGSEGV/SIGABRT）
+
+**建议修复（Major）**
+
+3. AC 中增加 `compute-sanitizer --tool memcheck` 验证项
+4. `StateView` 返回语义需明确所有权（view 还是 owned value）
+5. Sub-tasks 第一条"需求分析与接口设计"对 Bug 类任务无意义，替换为"根因定位与最小复现"
