@@ -265,9 +265,14 @@ class WorldResolver:
             dist_sq = diff.length_sq()
             min_dist = 2 * radius
 
-            if dist_sq < min_dist * min_dist and dist_sq > 1e-10:
-                dist = dist_sq ** 0.5
-                normal = Vec3(diff.x / dist, diff.y / dist, diff.z / dist)
+            if dist_sq < min_dist * min_dist:
+                if dist_sq < 1e-10:
+                    # 完全重合 — 给一个确定性分离方向(按id排序保证确定性)
+                    dist = 0.0
+                    normal = Vec3(1.0, 0.0, 0.0)
+                else:
+                    dist = dist_sq ** 0.5
+                    normal = Vec3(diff.x / dist, diff.y / dist, diff.z / dist)
                 contact = Vec3(
                     (pos_a.x + pos_b.x) / 2,
                     (pos_a.y + pos_b.y) / 2,
@@ -324,13 +329,19 @@ class WorldResolver:
                 pos_b = predicted[b_id]
                 diff = pos_a - pos_b
                 dist_sq = diff.length_sq()
-                if dist_sq < 1e-10:
-                    continue
-
-                dist = dist_sq ** 0.5
                 min_dist = self._cell_size / 2.0
-                if dist >= min_dist:
-                    continue
+
+                if dist_sq < 1e-10:
+                    # 完全重合 — 确定性分离
+                    dist = 0.0
+                    normal = Vec3(1.0, 0.0, 0.0)
+                    penetration = min_dist
+                else:
+                    dist = dist_sq ** 0.5
+                    if dist >= min_dist:
+                        continue
+                    normal = Vec3(diff.x / dist, diff.y / dist, diff.z / dist)
+                    penetration = min_dist - dist
 
                 # 按 priority 分配修正量
                 req_a = next((r for r in requests if r.individual_id == a_id), None)
@@ -340,9 +351,6 @@ class WorldResolver:
                 total = pa + pb + 1e-6
                 ratio_a = pb / total  # 低priority的个体被推开更多
                 ratio_b = pa / total
-
-                penetration = min_dist - dist
-                normal = Vec3(diff.x / dist, diff.y / dist, diff.z / dist)
                 correction = penetration * 0.8  # 松弛因子
 
                 predicted[a_id] = pos_a + normal * (correction * ratio_a)
