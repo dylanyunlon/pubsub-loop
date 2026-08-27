@@ -174,3 +174,78 @@ def readable_typename(tp: type) -> str:
     if module in ('builtins', '__main__', ''):
         return qualname
     return f"{module}.{qualname}"
+
+
+# ---------------------------------------------------------------------------
+#  PRD #59 additions: demangle_short, safe_demangle, batch_demangle
+# ---------------------------------------------------------------------------
+
+
+def demangle_short(mangled: str) -> str:
+    """Demangle and strip leading namespace prefixes.
+
+    Keeps template parameters intact (including internal namespaces):
+        "transport::UnifiedWriter<IndividualState>::write"
+        → "write"  (top-level namespace stripped)
+
+    But template arguments preserve their namespaces:
+        "scheduler::CRoutine::dispatch<data::ChannelWriter<PositionState>>"
+        → "dispatch<data::ChannelWriter<PositionState>>"
+
+    C++ equivalent:
+        std::string demangle_short(const char* mangled_name) {
+            auto full = demangle(mangled_name);
+            int bracket_depth = 0;
+            size_t last_sep = npos;
+            for (size_t i = 0; i+1 < full.size(); ++i) {
+                if (full[i] == '<') ++bracket_depth;
+                else if (full[i] == '>') --bracket_depth;
+                else if (bracket_depth == 0 && full[i] == ':' && full[i+1] == ':')
+                    last_sep = i + 2;
+            }
+            return (last_sep != npos) ? full.substr(last_sep) : full;
+        }
+    """
+    if not mangled:
+        return ""
+
+    full = demangle(mangled)
+    bracket_depth = 0
+    last_sep = -1
+
+    i = 0
+    while i + 1 < len(full):
+        ch = full[i]
+        if ch == '<':
+            bracket_depth += 1
+        elif ch == '>':
+            bracket_depth -= 1
+        elif bracket_depth == 0 and ch == ':' and full[i + 1] == ':':
+            last_sep = i + 2
+            i += 1  # skip the second ':'
+        i += 1
+
+    return full[last_sep:] if last_sep >= 0 else full
+
+
+def safe_demangle(mangled: Optional[str]) -> str:
+    """Null-safe demangle — returns "" for None, never raises.
+
+    C++ equivalent handles nullptr:
+        if (!mangled_name) return "";
+    """
+    if mangled is None:
+        return ""
+    try:
+        return demangle(mangled)
+    except Exception:
+        return mangled
+
+
+def batch_demangle(symbols: list[str]) -> list[str]:
+    """Demangle a list of symbols.
+
+    For profiler stack traces where multiple frames need demangling at once.
+    Uses the lru_cache on demangle() for deduplication.
+    """
+    return [safe_demangle(s) for s in symbols]

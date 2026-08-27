@@ -13,3 +13,7 @@ from world.scheduler.segmented_reduce import (
     SumOp, MaxOp, MinOp,
     SegmentedReduceMetrics, get_metrics as get_reduce_metrics,
 )
+from world.scheduler.sort_histogram import (
+    SortCRoutine, SortConfig,
+    HistogramCRoutine, HistogramBuffer,
+)
