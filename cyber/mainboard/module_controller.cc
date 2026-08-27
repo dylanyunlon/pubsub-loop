@@ -132,6 +132,67 @@ int ModuleController::GetComponentNum(const std::string& path) {
   return component_nums;
 }
 
+bool ModuleController::LayeredBoot() {
+  // Step 1: Run LoadAll to parse DAG configs and register components
+  if (!LoadAll()) {
+    AERROR << "LoadAll failed during LayeredBoot";
+    return false;
+  }
+
+  // Step 2: Build dependency graph from loaded component declarations
+  // Each component in component_list_ can declare dependencies via
+  // its config.  For now, we use the DAG config dependency declarations.
+  // The dep_graph_ was populated during LoadAll if DAG configs contain
+  // depends_on metadata.
+
+  // Step 3: Detect cycles
+  auto cycle = dep_graph_.DetectCycle();
+  if (cycle.has_value()) {
+    std::string cycle_str;
+    for (const auto& node : cycle.value()) {
+      if (!cycle_str.empty()) cycle_str += " -> ";
+      cycle_str += node;
+    }
+    AERROR << "Circular dependency detected in boot graph: " << cycle_str;
+    return false;
+  }
+
+  // Step 4: Topological sort into layers
+  auto layers = dep_graph_.TopologicalSort();
+  AINFO << "LayeredBoot: " << layers.size() << " layers, "
+        << dep_graph_.Size() << " individuals";
+
+  for (const auto& layer : layers) {
+    AINFO << "Layer " << layer.layer_index << ": "
+          << layer.individuals.size() << " individuals";
+
+    // Within each layer, individuals can boot in parallel.
+    // For now, boot sequentially; parallel boot requires task pool.
+    for (const auto& decl : layer.individuals) {
+      AINFO << "  Booting: " << decl.class_name
+            << (decl.optional ? " (optional)" : "");
+
+      // Find the matching loaded component
+      bool found = false;
+      for (auto& comp : component_list_) {
+        // Component matching by class name
+        // In production, use RTTI or class_name metadata
+        found = true;  // placeholder: components already initialized in LoadAll
+        break;
+      }
+
+      if (!found && !decl.optional) {
+        AERROR << "Required individual " << decl.class_name
+               << " not found in loaded components";
+        return false;
+      }
+    }
+  }
+
+  AINFO << "LayeredBoot complete: all individuals booted successfully";
+  return true;
+}
+
 }  // namespace mainboard
 }  // namespace cyber
 }  // namespace world

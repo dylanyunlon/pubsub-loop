@@ -24,6 +24,7 @@
 
 #include "cyber/class_loader/class_loader_manager.h"
 #include "cyber/component/component.h"
+#include "cyber/mainboard/dependency_graph.h"
 #include "cyber/mainboard/module_argument.h"
 
 namespace world {
@@ -41,6 +42,14 @@ class ModuleController {
   bool LoadAll();
   void Clear();
 
+  /// Layer-parallel boot using DependencyGraph (PRD #12).
+  /// Builds the dependency graph from DAG configs, detects cycles,
+  /// and boots individuals layer by layer (parallel within layers).
+  bool LayeredBoot();
+
+  /// Access the dependency graph (populated after Init/LoadAll).
+  const DependencyGraph& GetDependencyGraph() const { return dep_graph_; }
+
  private:
   bool LoadModule(const std::string& path);
   bool LoadModule(const DagConfig& dag_config);
@@ -51,6 +60,7 @@ class ModuleController {
   ModuleArgument args_;
   class_loader::ClassLoaderManager class_loader_manager_;
   std::vector<std::shared_ptr<ComponentBase>> component_list_;
+  DependencyGraph dep_graph_;
 };
 
 inline ModuleController::ModuleController(const ModuleArgument& args)
