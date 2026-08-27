@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package world.cyber.proto;
+
+// Individual's motion request - submitted every tick
+message MotionRequest {
+  uint64 individual_id = 1;
+  uint64 tick_id = 2;
+  
+  // Position delta
+  double dx = 3;
+  double dy = 4;
+  double dz = 5;
+  
+  // Rotation delta (quaternion)
+  double dqx = 6;
+  double dqy = 7;
+  double dqz = 8;
+  double dqw = 9;
+  
+  // Velocity intent
+  double vx = 10;
+  double vy = 11;
+  double vz = 12;
+  
+  // Collision layer mask
+  uint64 collision_mask = 13;
+  
+  // Priority (higher = resolved first)
+  uint32 priority = 14;
+  
+  // Governance metadata
+  uint64 issuer_node_id = 15;
+  uint64 timestamp_ns = 16;
+}
+
+// World confirms state after resolution
+message ConfirmedState {
+  uint64 individual_id = 1;
+  uint64 tick_id = 2;
+  
+  // Confirmed position
+  double x = 3;
+  double y = 4;
+  double z = 5;
+  
+  // Confirmed rotation
+  double qx = 6;
+  double qy = 7;
+  double qz = 8;
+  double qw = 9;
+  
+  // Confirmed velocity
+  double vx = 10;
+  double vy = 11;
+  double vz = 12;
+  
+  // Resolution flags
+  bool motion_granted = 13;
+  bool collision_detected = 14;
+  uint64 collided_with = 15;  // Other individual ID
+  
+  // Governance
+  GovernanceVerdict verdict = 16;
+}
+
+message GovernanceVerdict {
+  enum Decision {
+    ALLOW = 0;
+    DENY = 1;
+    MODIFY = 2;
+    DEFER = 3;
+  }
+  Decision decision = 1;
+  string reason = 2;
+  uint64 policy_id = 3;
+}
+
+message CollisionEvent {
+  uint64 tick_id = 1;
+  uint64 individual_a = 2;
+  uint64 individual_b = 3;
+  double penetration_depth = 4;
+  double normal_x = 5;
+  double normal_y = 6;
+  double normal_z = 7;
+}
+
+// World tick broadcast
+message WorldTick {
+  uint64 tick_id = 1;
+  uint64 timestamp_ns = 2;
+  double dt = 3;  // Time step in seconds
+  uint64 individual_count = 4;
+}
+
+// Bulk state snapshot for transport
+message WorldStateSnapshot {
+  uint64 tick_id = 1;
+  repeated ConfirmedState states = 2;
+  uint64 timestamp_ns = 3;
+}
+
+// Individual registration
+message IndividualDescriptor {
+  uint64 individual_id = 1;
+  string name = 2;
+  uint64 collision_mask = 3;
+  double mass = 4;
+  double radius = 5;  // Bounding sphere
+  uint64 owning_node_id = 6;
+  
+  // Initial state
+  double x = 7;
+  double y = 8;
+  double z = 9;
+}
