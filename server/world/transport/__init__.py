@@ -8,3 +8,6 @@ from world.transport.memory_pool import (
     pack_motion_request, unpack_motion_request,
     pack_confirmed_state, unpack_confirmed_state,
 )
+from world.transport.topology_router import (
+    TopologyRouter, TopologyDistance, EndpointInfo, RouterStats,
+)

@@ -341,3 +341,107 @@ class DeterministicTaskOrder:
         """每个tick开始时重置计数器"""
         with self._lock:
             self._creation_counter = 0
+
+
+# ---------------------------------------------------------------------------
+#  ParallelExecutor — thin wrapper delegating to CRoutinePolicy (PRD #40)
+# ---------------------------------------------------------------------------
+
+class ParallelExecutor:
+    """Parallel task executor that delegates directly to a ProcessorContext.
+
+    PRD #40: Eliminates double scheduling overhead by removing the executor's
+    internal queue.  Tasks go directly to the policy's scheduling layer.
+
+    Before (bug): ParallelExecutor had its own task queue + scheduler.
+    After (fix): ParallelExecutor is a thin wrapper that calls policy.add_routine()
+    and policy.next_routine() directly, using the same scheduling layer as
+    the Processor.
+
+    Usage::
+
+        ctx = ClassicContext("worker")
+        executor = ParallelExecutor(ctx)
+        executor.submit(my_task_routine)  # goes directly to ctx scheduling
+        executor.run_batch(routines)      # batch dispatch, no double-queue
+    """
+
+    __slots__ = ('_context', '_stats')
+
+    def __init__(self, context: ProcessorContext):
+        self._context = context
+        self._stats = ExecutorStats()
+
+    def submit(self, routine: 'CRoutine') -> bool:
+        """Submit a routine for execution.
+
+        Goes directly to the policy's scheduling layer — no intermediate queue.
+        """
+        self._context.add_routine(routine)
+        self._stats.submitted += 1
+        return True
+
+    def run_one(self) -> bool:
+        """Execute the next scheduled routine.
+
+        Directly delegates to context.next_routine() — single scheduling layer.
+        """
+        routine = self._context.next_routine()
+        if routine is None:
+            return False
+        routine.resume()
+        self._stats.executed += 1
+        return True
+
+    def run_batch(self, routines: List['CRoutine']) -> int:
+        """Submit and execute a batch of routines.
+
+        Returns the number of routines successfully executed.
+        """
+        for r in routines:
+            self._context.add_routine(r)
+            self._stats.submitted += 1
+
+        executed = 0
+        while True:
+            routine = self._context.next_routine()
+            if routine is None:
+                break
+            routine.resume()
+            executed += 1
+            self._stats.executed += 1
+
+        return executed
+
+    def drain(self) -> int:
+        """Execute all pending routines until the context is empty."""
+        count = 0
+        while True:
+            routine = self._context.next_routine()
+            if routine is None:
+                break
+            routine.resume()
+            count += 1
+            self._stats.executed += 1
+        return count
+
+    @property
+    def context(self) -> ProcessorContext:
+        return self._context
+
+    @property
+    def stats(self) -> 'ExecutorStats':
+        return self._stats
+
+    @property
+    def pending_count(self) -> int:
+        return self._context.routine_count()
+
+
+class ExecutorStats:
+    """Statistics for ParallelExecutor."""
+    __slots__ = ('submitted', 'executed')
+
+    def __init__(self):
+        self.submitted = 0
+        self.executed = 0

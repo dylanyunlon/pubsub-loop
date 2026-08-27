@@ -194,3 +194,12 @@ class DispatchPolicy:
     @property
     def virtual_bases(self) -> FrozenSet[type]:
         return self._virtual_bases
+
+
+# ---------------------------------------------------------------------------
+#  string_view compat (PRD #53)
+# ---------------------------------------------------------------------------
+
+# Python equivalent: str is already the universal string type.
+# This alias exists only for API parity with the C++ world::base namespace.
+string_view = str  # replaces deprecated __string_view alias
