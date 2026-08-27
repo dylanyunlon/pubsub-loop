@@ -23,6 +23,7 @@
 #include <utility>
 
 #include "cyber/node/node_channel_impl.h"
+#include "cyber/node/node_pointer_traits.h"
 #include "cyber/node/node_service_impl.h"
 
 namespace world {

@@ -43,6 +43,11 @@ class PerfEventCache {
   void AddTransportEvent(const TransPerf event_id, const uint64_t channel_id,
                          const uint64_t msg_seq, const uint64_t stamp = 0,
                          const std::string& adder = "-");
+  void AddStreamProgressEvent(const StreamPerf event_id,
+                              const uint64_t stream_id,
+                              const uint64_t completed,
+                              const uint64_t total,
+                              const uint64_t tick_seq = 0);
 
   std::string PerfFile() { return perf_file_; }
 

@@ -29,7 +29,12 @@ namespace world {
 namespace cyber {
 namespace event {
 
-enum class EventType { SCHED_EVENT = 0, TRANS_EVENT = 1, TRY_FETCH_EVENT = 3 };
+enum class EventType {
+  SCHED_EVENT = 0,
+  TRANS_EVENT = 1,
+  TRY_FETCH_EVENT = 3,
+  STREAM_PROGRESS_EVENT = 4
+};
 
 enum class TransPerf {
   TRANSMIT_BEGIN = 0,
@@ -159,6 +164,62 @@ class TransportEvent : public EventBase {
   std::string adder_ = "";
   uint64_t msg_seq_ = 0;
   uint64_t channel_id_ = std::numeric_limits<uint64_t>::max();
+};
+
+/// Stream progress tracking phases for individual-state streaming operations.
+enum class StreamPerf {
+  STREAM_BEGIN = 0,       ///< Individual batch stream initiated
+  CHUNK_DISPATCHED = 1,   ///< A chunk of individual states dispatched
+  CHUNK_CONFIRMED = 2,    ///< World confirmed receipt of chunk
+  BACKPRESSURE_HIT = 3,   ///< Backpressure triggered (overflow)
+  STREAM_COMPLETE = 4,    ///< All individuals in batch confirmed
+};
+
+/// Event for tracking progress of individual-state streaming operations.
+/// Records how many individuals out of a total have been processed per tick.
+class StreamProgressEvent : public EventBase {
+ public:
+  StreamProgressEvent() {
+    etype_ = static_cast<int>(EventType::STREAM_PROGRESS_EVENT);
+  }
+
+  std::string SerializeToString() override {
+    std::stringstream ss;
+    ss << etype_ << "\t";
+    ss << eid_ << "\t";
+    ss << stream_id_ << "\t";
+    ss << completed_ << "/" << total_ << "\t";
+    ss << tick_seq_ << "\t";
+    ss << stamp_;
+    return ss.str();
+  }
+
+  void set_stream_id(uint64_t id) { stream_id_ = id; }
+  void set_completed(uint64_t n) { completed_ = n; }
+  void set_total(uint64_t n) { total_ = n; }
+  void set_tick_seq(uint64_t seq) { tick_seq_ = seq; }
+
+  uint64_t stream_id() const { return stream_id_; }
+  uint64_t completed() const { return completed_; }
+  uint64_t total() const { return total_; }
+  uint64_t tick_seq() const { return tick_seq_; }
+
+  static std::string ShowStreamPerf(StreamPerf type) {
+    switch (type) {
+      case StreamPerf::STREAM_BEGIN: return "STREAM_BEGIN";
+      case StreamPerf::CHUNK_DISPATCHED: return "CHUNK_DISPATCHED";
+      case StreamPerf::CHUNK_CONFIRMED: return "CHUNK_CONFIRMED";
+      case StreamPerf::BACKPRESSURE_HIT: return "BACKPRESSURE_HIT";
+      case StreamPerf::STREAM_COMPLETE: return "STREAM_COMPLETE";
+      default: return "";
+    }
+  }
+
+ private:
+  uint64_t stream_id_ = 0;
+  uint64_t completed_ = 0;
+  uint64_t total_ = 0;
+  uint64_t tick_seq_ = 0;
 };
 
 }  // namespace event

@@ -115,6 +115,31 @@ void PerfEventCache::AddTransportEvent(const TransPerf event_id,
   event_queue_.Enqueue(e);
 }
 
+void PerfEventCache::AddStreamProgressEvent(
+    const StreamPerf event_id, const uint64_t stream_id,
+    const uint64_t completed, const uint64_t total,
+    const uint64_t tick_seq) {
+  if (!enable_) {
+    return;
+  }
+
+  // Stream progress events are always recorded when perf is on
+  // (they use the ALL filter or a future STREAM type).
+  if (perf_conf_.type() != PerfType::ALL) {
+    return;
+  }
+
+  auto e = std::make_shared<StreamProgressEvent>();
+  e->set_eid(static_cast<int>(event_id));
+  e->set_stamp(Time::Now().ToNanosecond());
+  e->set_stream_id(stream_id);
+  e->set_completed(completed);
+  e->set_total(total);
+  e->set_tick_seq(tick_seq);
+
+  event_queue_.Enqueue(e);
+}
+
 void PerfEventCache::Run() {
   EventBasePtr event;
   int buf_size = 0;

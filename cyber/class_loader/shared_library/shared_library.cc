@@ -25,6 +25,8 @@
 
 #include <dlfcn.h>
 
+#include "cyber/class_loader/shared_library/lib_diagnostic.h"
+
 namespace world {
 namespace cyber {
 namespace class_loader {
@@ -52,7 +54,9 @@ void SharedLibrary::Load(const std::string& path, int flags) {
   handle_ = dlopen(path.c_str(), real_flag);
   if (!handle_) {
     const char* err = dlerror();
-    throw LibraryLoadException(err ? std::string(err) : path);
+    std::string base_err = err ? std::string(err) : path;
+    auto diag = LibDiagnostic::collect(path);
+    throw LibraryLoadException(LibDiagnostic::Format(base_err, diag));
   }
 
   path_ = path;

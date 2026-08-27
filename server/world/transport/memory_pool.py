@@ -133,6 +133,54 @@ class TypedPool(Generic[T]):
                     return
             # obj不属于此池 — 静默忽略
 
+    def __getitem__(self, index: int) -> Optional[T]:
+        """
+        直接索引 — 仅限 pool 内部使用。
+
+        CyberRT对应:
+          device_vector::operator[] — host 端调用是 UB
+          修复 (PRD #553): Debug 模式下断言失败而非 UB
+
+        pubsub-loop等价:
+          直接索引可能返回已回收(in_use=False)的对象
+          → 语义上的"misaligned access"
+
+        外部代码应使用 element_at() 而非 __getitem__。
+        """
+        import warnings
+        if __debug__:
+            warnings.warn(
+                "TypedPool.__getitem__() is for internal use only. "
+                "Use element_at() for safe access from outside the pool.",
+                stacklevel=2)
+        with self._lock:
+            if 0 <= index < len(self._slots):
+                slot = self._slots[index]
+                if not slot.in_use:
+                    raise RuntimeError(
+                        f"TypedPool[{index}]: accessing released slot "
+                        f"(equivalent to device_vector UB)")
+                return slot.data
+            raise IndexError(f"TypedPool index {index} out of range")
+
+    def element_at(self, index: int) -> Optional[T]:
+        """
+        安全索引 — 返回对象的深拷贝。
+
+        CyberRT对应:
+          device_vector::element_at(i) — 通过 cudaMemcpy 拷贝到 host
+
+        始终安全, 无 UB。返回的是独立副本, 不持有池内引用。
+        """
+        import copy
+        with self._lock:
+            if 0 <= index < len(self._slots):
+                slot = self._slots[index]
+                if not slot.in_use:
+                    return None
+                return copy.deepcopy(slot.data)
+            return None
+
     @property
     def available(self) -> int:
         """可用对象数"""
