@@ -327,28 +327,40 @@ class SpatialHash:
         """
         查询所有可能碰撞的个体对
 
-        只返回同格子和相邻格子内的个体对。
-        去重: 只返回 (a, b) 其中 a < b。
+        half-neighbor优化:
+          只检查13个"正方向"邻居 + 同格子内部对,
+          避免正/反方向重复检查(26→13), 并且不需要set去重。
 
-        这是 WorldResolver._broadphase() 的核心调用。
+        复杂度: O(cells * k²/2), 其中k=每格平均个体数
         """
-        pairs: Set[Tuple[int, int]] = set()
-        for key, ids in self._grid.items():
+        # 13个正方向偏移 — 每条边只走一次
+        HALF_NEIGHBORS = (
+            (1,0,0), (0,1,0), (0,0,1),
+            (1,1,0), (1,-1,0), (1,0,1), (1,0,-1),
+            (0,1,1), (0,1,-1),
+            (1,1,1), (1,-1,1), (1,1,-1), (1,-1,-1),
+        )
+        grid = self._grid
+        pairs = []
+        for key, ids in grid.items():
             cx, cy, cz = key
-            # 收集本格子 + 相邻格子的所有个体
-            nearby: List[int] = []
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    for dz in (-1, 0, 1):
-                        neighbor_key = (cx + dx, cy + dy, cz + dz)
-                        nearby.extend(self._grid.get(neighbor_key, []))
+            n = len(ids)
+            # 同格子内部对
+            if n > 1:
+                for i in range(n):
+                    a = ids[i]
+                    for j in range(i + 1, n):
+                        pairs.append((a, ids[j]) if a < ids[j] else (ids[j], a))
 
-            # 去重: 对于本格子内的每个个体，与nearby列表配对
-            for a in ids:
-                for b in nearby:
-                    if a < b:
-                        pairs.add((a, b))
-        return list(pairs)
+            # 半邻居格子的跨格子对
+            for dx, dy, dz in HALF_NEIGHBORS:
+                nids = grid.get((cx+dx, cy+dy, cz+dz))
+                if nids is None:
+                    continue
+                for a in ids:
+                    for b in nids:
+                        pairs.append((a, b) if a < b else (b, a))
+        return pairs
 
     def query_radius(self, center: Vec3, radius: float) -> List[int]:
         """

@@ -316,9 +316,11 @@ class WorldResolver:
         # 计算每个个体的预测位置
         predicted: Dict[int, Vec3] = {}
         rotations: Dict[int, Quat] = {}
+        priority_map: Dict[int, float] = {}
         for req in requests:
             predicted[req.individual_id] = self._predicted_position(req)
             rotations[req.individual_id] = req.delta_rotation
+            priority_map[req.individual_id] = req.priority
 
         # 碰撞个体集
         collided_ids = set()
@@ -327,42 +329,42 @@ class WorldResolver:
             collided_ids.add(col.individual_b)
 
         # Gauss-Seidel 位置校正迭代
+        min_dist = self._cell_size / 2.0
         for _ in range(self._solver_iterations):
             for col in collisions:
                 a_id, b_id = col.individual_a, col.individual_b
-                if a_id not in predicted or b_id not in predicted:
+                pos_a = predicted.get(a_id)
+                pos_b = predicted.get(b_id)
+                if pos_a is None or pos_b is None:
                     continue
 
-                pos_a = predicted[a_id]
-                pos_b = predicted[b_id]
-                diff = pos_a - pos_b
-                dist_sq = diff.length_sq()
-                min_dist = self._cell_size / 2.0
+                dx = pos_a.x - pos_b.x
+                dy = pos_a.y - pos_b.y
+                dz = pos_a.z - pos_b.z
+                dist_sq = dx*dx + dy*dy + dz*dz
 
                 if dist_sq < 1e-10:
                     # 完全重合 — 确定性分离
-                    dist = 0.0
-                    normal = Vec3(1.0, 0.0, 0.0)
+                    nx, ny, nz = 1.0, 0.0, 0.0
                     penetration = min_dist
                 else:
                     dist = dist_sq ** 0.5
                     if dist >= min_dist:
                         continue
-                    normal = Vec3(diff.x / dist, diff.y / dist, diff.z / dist)
+                    inv_d = 1.0 / dist
+                    nx, ny, nz = dx * inv_d, dy * inv_d, dz * inv_d
                     penetration = min_dist - dist
 
-                # 按 priority 分配修正量
-                req_a = next((r for r in requests if r.individual_id == a_id), None)
-                req_b = next((r for r in requests if r.individual_id == b_id), None)
-                pa = req_a.priority if req_a else 0.0
-                pb = req_b.priority if req_b else 0.0
+                # O(1) priority lookup (was O(n) linear scan)
+                pa = priority_map.get(a_id, 0.0)
+                pb = priority_map.get(b_id, 0.0)
                 total = pa + pb + 1e-6
-                ratio_a = pb / total  # 低priority的个体被推开更多
-                ratio_b = pa / total
                 correction = penetration * 0.8  # 松弛因子
+                ca = correction * (pb / total)
+                cb = correction * (pa / total)
 
-                predicted[a_id] = pos_a + normal * (correction * ratio_a)
-                predicted[b_id] = pos_b - normal * (correction * ratio_b)
+                predicted[a_id] = Vec3(pos_a.x + nx*ca, pos_a.y + ny*ca, pos_a.z + nz*ca)
+                predicted[b_id] = Vec3(pos_b.x - nx*cb, pos_b.y - ny*cb, pos_b.z - nz*cb)
 
         # 构建结果
         result: Dict[int, Tuple[Vec3, Quat, int]] = {}
@@ -413,7 +415,7 @@ class WorldResolver:
     def _publish_unchanged(self, tick_seq: int) -> List[ConfirmedState]:
         """没有 MotionRequest 时，所有个体保持原位"""
         result = []
-        for iid, state in self._confirmed_states.items():
+        for iid, state in list(self._confirmed_states.items()):
             state.tick_seq = tick_seq
             state.resolve_flags = ResolveFlag.NONE
             self._confirmed_writer.write(state)
