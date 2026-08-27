@@ -44,6 +44,14 @@ file(GLOB_RECURSE CYBER_SOURCES
   "${CMAKE_CURRENT_SOURCE_DIR}/time/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/timer/*.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/transport/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/record/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/statistics/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/context/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/plugin_manager/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/profiler/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tools/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/diagnostic/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/neuron_compute/*.cc"
 )
 
 # Exclude test files
@@ -89,9 +97,11 @@ install(TARGETS world_cyber
   ARCHIVE DESTINATION lib
 )
 
-install(DIRECTORY base/ common/ component/ croutine/ data/ event/ io/
-  logger/ mainboard/ message/ node/ parameter/ scheduler/
-  service/ service_discovery/ sysmo/ task/ time/ timer/ transport/
+install(DIRECTORY base/ common/ component/ context/ croutine/ data/
+  diagnostic/ distributed_core/ event/ io/ logger/ mainboard/ message/
+  neuron_compute/ node/ parameter/ plugin_manager/ profiler/ record/
+  scheduler/ service/ service_discovery/ statistics/ sysmo/ task/
+  time/ timer/ tools/ transport/
   DESTINATION include/cyber
   FILES_MATCHING PATTERN "*.h"
 )

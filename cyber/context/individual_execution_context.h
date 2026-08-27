@@ -11,7 +11,10 @@
 #ifndef CYBER_CONTEXT_INDIVIDUAL_EXECUTION_CONTEXT_H_
 #define CYBER_CONTEXT_INDIVIDUAL_EXECUTION_CONTEXT_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
+#include <vector>
 
 #include "cyber/context/compat_matrix.h"
 #include "cyber/context/context.h"
@@ -33,15 +36,41 @@ struct CyberRTVersion {
   static Version RuntimeVersion();
 };
 
+/// @brief Explicit declaration of execution-scope pub/sub channel ID range.
+/// PRD #128: Must be configured before Initialize() to prevent
+/// out-of-bounds channel handle creation in setup_transport().
+struct ScopeConfig {
+  uint32_t channel_id_begin = 0;       ///< Minimum allowed channel ID (inclusive)
+  uint32_t channel_id_end = UINT32_MAX;///< Maximum allowed channel ID (exclusive)
+  size_t   individual_capacity = 0;    ///< Max individuals in this scope (0 = unlimited)
+};
+
 /// IndividualExecutionContext — initializes an individual's runtime
 /// environment and gates on CyberRT version compatibility.
+///
+/// PRD #128 FIX: initialize() now validates scope boundary BEFORE
+/// setup_transport(), preventing out-of-bounds channel handle creation.
+///
+/// Correct order:
+///   1. set_scope()                  — configure channel ID range
+///   2. Initialize()                 — version gate + scope validate + transport + scheduler
+///
+/// Old (buggy) order was: setup_transport → setup_scheduler → validate_scope
 class IndividualExecutionContext {
  public:
   IndividualExecutionContext() = default;
 
+  /// @brief Configure scope boundary BEFORE calling Initialize().
+  /// If not called, Initialize() uses a permissive default scope.
+  void set_scope(const ScopeConfig& cfg) {
+    scope_ = cfg;
+    scope_configured_ = true;
+  }
+
+  const ScopeConfig& scope() const { return scope_; }
+
   /// Initialize the execution context.
-  /// Checks CyberRT version compatibility and emits a diagnostic if
-  /// incompatible. Calls std::terminate() on version mismatch (Fatal).
+  /// Order: version gate → validate_scope → setup_transport → setup_scheduler
   void Initialize();
 
   /// Initialize with an explicit compatibility matrix path.
@@ -53,11 +82,29 @@ class IndividualExecutionContext {
 
   bool IsInitialized() const { return initialized_; }
 
+  /// Register an individual's channel IDs for scope validation.
+  /// Must be called before Initialize() for each individual.
+  void RegisterIndividualChannels(uint64_t individual_id,
+                                  const std::vector<uint32_t>& channel_ids) {
+    registered_channels_.push_back({individual_id, channel_ids});
+  }
+
  private:
   Context ctx_;
   bool initialized_ = false;
+  ScopeConfig scope_;
+  bool scope_configured_ = false;
+
+  struct IndividualChannelSet {
+    uint64_t individual_id;
+    std::vector<uint32_t> channel_ids;
+  };
+  std::vector<IndividualChannelSet> registered_channels_;
 
   void VersionGate(const std::filesystem::path& compat_yaml);
+  void ValidateScopeBoundary();
+  void SetupTransport();
+  void SetupScheduler();
 };
 
 // ─── Inline implementations ────────────────────────────────────────────────
@@ -80,8 +127,58 @@ inline void IndividualExecutionContext::Initialize() {
 inline void IndividualExecutionContext::Initialize(
     const std::filesystem::path& compat_yaml) {
   if (initialized_) return;
+
+  // PRD #128 FIX: Correct initialization order.
+  // validate_scope BEFORE setup_transport to prevent OOB channel handles.
   VersionGate(compat_yaml);
+  ValidateScopeBoundary();  // Step 1: verify all channel IDs in [begin, end)
+  SetupTransport();         // Step 2: safe to create ChannelWriter/Reader now
+  SetupScheduler();         // Step 3: scheduler can reference valid channels
+
   initialized_ = true;
+}
+
+inline void IndividualExecutionContext::ValidateScopeBoundary() {
+  for (const auto& entry : registered_channels_) {
+    for (uint32_t cid : entry.channel_ids) {
+      if (cid < scope_.channel_id_begin || cid >= scope_.channel_id_end) {
+        WORLD_DIAGNOSTIC_ERROR(
+            "Individual %" PRIu64 " has channel ID %u outside valid scope "
+            "[%u, %u). Refusing to initialize transport layer.\n"
+            "Call set_scope() with a wider range or remove the "
+            "out-of-bounds channel registration.",
+            entry.individual_id, cid,
+            scope_.channel_id_begin, scope_.channel_id_end);
+        // WORLD_DIAGNOSTIC_ERROR calls std::terminate()
+      }
+    }
+  }
+
+  if (scope_.individual_capacity > 0 &&
+      registered_channels_.size() > scope_.individual_capacity) {
+    WORLD_DIAGNOSTIC_ERROR(
+        "Registered individuals (%zu) exceed scope capacity (%zu).",
+        registered_channels_.size(), scope_.individual_capacity);
+  }
+
+  AINFO << "Scope boundary validated: " << registered_channels_.size()
+        << " individuals, channel range [" << scope_.channel_id_begin
+        << ", " << scope_.channel_id_end << ")";
+}
+
+inline void IndividualExecutionContext::SetupTransport() {
+  // Create ChannelWriter<T>/ChannelReader<T> handles for all registered
+  // individuals. Safe to call because ValidateScopeBoundary() passed.
+  // Actual transport setup delegates to the Transport singleton.
+  AINFO << "Setting up transport for " << registered_channels_.size()
+        << " individuals";
+  // TODO: integrate with cyber/transport/transport.h
+}
+
+inline void IndividualExecutionContext::SetupScheduler() {
+  // Initialize per-individual CRoutine scheduling.
+  AINFO << "Setting up scheduler";
+  // TODO: integrate with cyber/scheduler/scheduler.h
 }
 
 inline void IndividualExecutionContext::VersionGate(

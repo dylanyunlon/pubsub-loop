@@ -2,31 +2,27 @@
 #
 # world/base/primitives.py
 #
-# 基础并发原语 — C++ FFI bridge with Python fallback
+# 基础并发原语 — 从 CyberRT cyber/base 移植
 #
-# Architecture:
-#   These primitives (BoundedQueue, AtomicHashMap, Signal, ThreadPool)
-#   are implemented in C++ at cyber/base/*.h for production performance
-#   (lock-free CAS, ~10ns ops, 5M individuals/sec target).
+# CyberRT来源:
+#   cyber/base/bounded_queue.h  → BoundedQueue (lock-free SPSC/MPSC ring buffer)
+#   cyber/base/atomic_hash_map.h → AtomicHashMap (lock-free hash map)
+#   cyber/base/signal.h         → Signal/Slot (观察者模式, Component回调注册)
+#   cyber/base/thread_pool.h    → ThreadPool (固定大小线程池)
 #
-#   This module provides:
-#     1. FFI wrapper using _world_cyber pybind11 module (when available)
-#     2. Pure-Python fallback for development/testing (not perf-target)
+# governance来源:
+#   policy-engine/core: 无直接对应的底层原语，
+#   但 Runtime 的 telemetry sink 和 event dispatch 依赖类似的并发队列。
 #
-#   The Python fallback is intentionally slower (mutex-based, not lock-free)
-#   but maintains identical API semantics so test code runs without the
-#   C++ build.
+# 关键约束:
+#   1. BoundedQueue 是 transport 层的基础 — SHM transmitter 用它做消息缓冲
+#   2. AtomicHashMap 是 service_discovery 的基础 — 存储 channel→writer 映射
+#   3. Signal 是 Component 回调注册的基础 — Reader 的回调通过 Signal 连接
 #
-# CyberRT C++ sources:
-#   cyber/base/bounded_queue.h  → BoundedQueue (lock-free SPSC/MPSC)
-#   cyber/base/atomic_hash_map.h → AtomicHashMap (lock-free open-addressing)
-#   cyber/base/signal.h         → Signal/Slot (observer pattern)
-#   cyber/base/thread_pool.h    → ThreadPool (fixed-size)
-#
-# Performance note:
-#   Python cannot achieve the PRD performance targets (200ns/hop, 5M ind/sec).
-#   These targets require the C++ implementation via FFI.
-#   The Python fallback is for correctness testing and prototyping only.
+# Python适配:
+#   CyberRT 用 lock-free C++ 实现 (CAS操作)。
+#   Python 不适合 lock-free (GIL限制)，用 threading.Lock 替代，
+#   保持接口语义一致。PRD #19: 对齐字节数工具在此实现。
 
 import threading
 from typing import TypeVar, Generic, Optional, Callable, List, Dict
@@ -34,33 +30,39 @@ from collections import deque
 
 T = TypeVar('T')
 
-# ── Try to import C++ FFI module ──
-_USE_CPP = False
-try:
-    import _world_cyber as _cpp
-    _USE_CPP = True
-except ImportError:
-    _cpp = None
-
 
 class BoundedQueue(Generic[T]):
     """
     有界队列 — 固定容量的FIFO消息缓冲
 
-    C++ backing: cyber/base/bounded_queue.h (lock-free SPSC ring buffer)
-    Python fallback: deque + threading.Lock
+    CyberRT来源 (cyber/base/bounded_queue.h):
+      lock-free SPSC ring buffer, 用于 transport 层消息传递。
+      Enqueue() → CAS写指针
+      Dequeue() → CAS读指针
+      WaitEnqueue() → busy-wait版本
+
+    Python适配:
+      用 deque(maxlen=N) + Lock 实现。
+      语义保持: 满时Enqueue返回False(不阻塞), WaitEnqueue阻塞。
+
+    用途:
+      transport::ShmTransmitter 的消息发送缓冲
+      data::CacheBuffer 的历史状态存储
+      scheduler::Processor 的任务队列
     """
 
     def __init__(self, capacity: int):
         self._capacity = capacity
-        # Python fallback
         self._queue: deque = deque()
         self._lock = threading.Lock()
         self._not_empty = threading.Condition(self._lock)
         self._not_full = threading.Condition(self._lock)
 
     def enqueue(self, item: T) -> bool:
-        """Non-blocking enqueue — returns False if full."""
+        """非阻塞入队 — 满时返回False
+
+        CyberRT: bool Enqueue(const T& element) — CAS尝试一次
+        """
         with self._lock:
             if len(self._queue) >= self._capacity:
                 return False
@@ -69,7 +71,10 @@ class BoundedQueue(Generic[T]):
             return True
 
     def wait_enqueue(self, item: T, timeout_s: float = 1.0) -> bool:
-        """Blocking enqueue — waits for space."""
+        """阻塞入队 — 等待空间可用
+
+        CyberRT: bool WaitEnqueue(const T& element) — busy-wait
+        """
         with self._not_full:
             while len(self._queue) >= self._capacity:
                 if not self._not_full.wait(timeout=timeout_s):
@@ -79,7 +84,10 @@ class BoundedQueue(Generic[T]):
             return True
 
     def dequeue(self) -> Optional[T]:
-        """Non-blocking dequeue — returns None if empty."""
+        """非阻塞出队 — 空时返回None
+
+        CyberRT: bool Dequeue(T* element) — CAS尝试一次
+        """
         with self._lock:
             if not self._queue:
                 return None
@@ -88,7 +96,7 @@ class BoundedQueue(Generic[T]):
             return item
 
     def wait_dequeue(self, timeout_s: float = 1.0) -> Optional[T]:
-        """Blocking dequeue — waits for data."""
+        """阻塞出队 — 等待数据可用"""
         with self._not_empty:
             while not self._queue:
                 if not self._not_empty.wait(timeout=timeout_s):
@@ -119,10 +127,21 @@ class BoundedQueue(Generic[T]):
 
 class AtomicHashMap(Generic[T]):
     """
-    并发安全哈希表
+    并发安全哈希表 — 支持并发读写
 
-    C++ backing: cyber/base/atomic_hash_map.h (lock-free open-addressing)
-    Python fallback: dict + RLock
+    CyberRT来源 (cyber/base/atomic_hash_map.h):
+      lock-free open-addressing hash map
+      Insert(key, value) → CAS
+      Get(key) → atomic load
+      用于 service_discovery 的 channel→endpoint 映射
+
+    Python适配:
+      dict + RWLock 实现。
+
+    用途:
+      ChannelManager 的 channel_name → Writer/Reader 映射
+      ServiceDiscovery 的拓扑管理
+      WorldResolver 的 individual_id → ConfirmedState 映射
     """
 
     def __init__(self):
@@ -130,7 +149,10 @@ class AtomicHashMap(Generic[T]):
         self._lock = threading.RLock()
 
     def insert(self, key, value: T) -> bool:
-        """Insert — returns False if key exists."""
+        """插入 — key已存在时返回False
+
+        CyberRT: bool Insert(K key, V value)
+        """
         with self._lock:
             if key in self._data:
                 return False
@@ -138,16 +160,20 @@ class AtomicHashMap(Generic[T]):
             return True
 
     def set(self, key, value: T):
-        """Set — overwrites if key exists."""
+        """设置 — key已存在时覆盖"""
         with self._lock:
             self._data[key] = value
 
     def get(self, key) -> Optional[T]:
-        """Get — returns None if key not found."""
+        """获取 — key不存在时返回None
+
+        CyberRT: bool Get(K key, V* value)
+        """
         with self._lock:
             return self._data.get(key)
 
     def remove(self, key) -> bool:
+        """删除"""
         with self._lock:
             if key in self._data:
                 del self._data[key]
@@ -178,10 +204,21 @@ class AtomicHashMap(Generic[T]):
 
 class Signal:
     """
-    信号/槽 — observer pattern
+    信号/槽 — 观察者模式
 
-    C++ backing: cyber/base/signal.h (multicast signal)
-    Python fallback: list + Lock
+    CyberRT来源 (cyber/base/signal.h):
+      Signal<Args...> — 多播信号
+      Connection = signal.Connect(slot)
+      signal(args...) → 调用所有已连接slot
+
+    用途:
+      Reader 的回调注册: reader.signal_.Connect(callback)
+      Component 的 Init/Proc 绑定
+      transport::Notifier 的通知机制
+
+    governance对应:
+      HypervisorEventBus.subscribe(type, handler) — 按类型订阅
+      Signal 更底层: 无类型过滤，所有连接的slot都会被调用
     """
 
     def __init__(self):
@@ -189,19 +226,26 @@ class Signal:
         self._lock = threading.Lock()
 
     def connect(self, slot: Callable) -> int:
-        """Connect slot — returns connection id."""
+        """连接slot — 返回connection id
+
+        CyberRT: Connection Connect(const Slot& slot)
+        """
         with self._lock:
             conn_id = len(self._slots)
             self._slots.append(slot)
             return conn_id
 
     def disconnect(self, conn_id: int):
+        """断开连接"""
         with self._lock:
             if 0 <= conn_id < len(self._slots):
                 self._slots[conn_id] = None
 
     def emit(self, *args, **kwargs):
-        """Fire signal — calls all connected slots."""
+        """触发信号 — 调用所有已连接slot
+
+        CyberRT: void operator()(Args... args)
+        """
         with self._lock:
             slots = list(self._slots)
         for slot in slots:
@@ -221,8 +265,13 @@ class ThreadPool:
     """
     固定大小线程池
 
-    C++ backing: cyber/base/thread_pool.h
-    Python fallback: concurrent.futures.ThreadPoolExecutor
+    CyberRT来源 (cyber/base/thread_pool.h):
+      ThreadPool(num_threads) — 固定大小
+      Enqueue(func) → future
+      用于 non-realtime 任务 (日志、统计)
+
+    scheduler模块用 CRoutine 做实时任务调度，
+    ThreadPool 只用于非实时后台工作。
     """
 
     def __init__(self, num_threads: int):
@@ -233,6 +282,7 @@ class ThreadPool:
         )
 
     def submit(self, func: Callable, *args, **kwargs):
+        """提交任务 — 返回Future"""
         return self._pool.submit(func, *args, **kwargs)
 
     def shutdown(self, wait: bool = True):
@@ -241,10 +291,10 @@ class ThreadPool:
 
 def get_aligned_layout(byte_size: int, alignment: int = 64) -> int:
     """
-    Compute aligned byte count — PRD #19.
+    计算对齐字节数 — PRD #19
 
-    Used for SHM transport zero-copy message layout.
-    C++ equivalent in cyber/base/ headers.
+    CyberRT来源: 对齐到cache line(64 bytes)，
+    用于 SHM transport 的零拷贝消息布局。
 
     >>> get_aligned_layout(100, 64)
     128

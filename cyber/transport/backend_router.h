@@ -73,26 +73,48 @@ class BackendRouter {
         ? it->second
         : TopologyDistance::kUnknown;
 
-    // Decision logic:
-    // 1. Same process → always Intra (zero-copy, ~10ns)
-    // 2. Same machine + msg > 256 bytes → SHM (~100ns)
-    // 3. Same machine + small msg → SHM or Intra depending on reader count
-    // 4. Remote → RTPS (~200µs but necessary)
-    // 5. Unknown → RTPS (safe default)
+    // PRD #17: Auto-route based on topology distance + message size + QoS.
+    //
+    // Decision matrix (latency targets for motion-request/confirmed-state):
+    //
+    // Distance       | msg ≤ 256B      | msg 257B–64KB   | msg > 64KB
+    // ───────────────┼─────────────────┼─────────────────┼──────────────
+    // SameProcess    | Intra (~10ns)   | Intra (~10ns)   | Intra (~50ns)
+    // SameMachine    | SHM   (~100ns)  | SHM   (~200ns)  | SHM   (~500ns)
+    // Remote         | RTPS  (~200µs)  | RTPS  (~500µs)  | SHM+relay *
+    // Unknown        | RTPS  (safe)    | RTPS  (safe)    | RTPS  (safe)
+    //
+    // * For remote + large: use SHM for local hop then RTPS relay.
+    //   This is a future optimization; for now, fall through to RTPS.
+
+    constexpr size_t kSmallMsgThreshold = 256;
+    constexpr size_t kLargeMsgThreshold = 65536;
 
     switch (dist) {
       case TopologyDistance::kSameProcess:
+        // Always intra-process: zero-copy pointer sharing
         return BackendHint::kIntraProcess;
 
       case TopologyDistance::kSameMachine:
+        // SHM is always optimal for same-machine
         return BackendHint::kSharedMemory;
 
       case TopologyDistance::kRemote:
+        if (avg_msg_size > kLargeMsgThreshold &&
+            qos.history_policy() != proto::QosHistoryPolicy::HISTORY_KEEP_ALL) {
+          // Large msgs with best-effort QoS: use SHM relay if available
+          // For now, still RTPS but flag for future SHM relay optimization
+          AINFO << "Channel " << channel_name << ": large msg ("
+                << avg_msg_size << "B) on remote path, using RTPS";
+        }
         return BackendHint::kRtps;
 
       case TopologyDistance::kUnknown:
       default:
-        // Conservative: start with RTPS, migrate when topology known
+        // Conservative: start with RTPS, migrate when topology known.
+        // For small high-frequency messages (MotionRequest ~120B),
+        // RTPS is acceptable; migration to SHM happens once
+        // service_discovery resolves the actual topology.
         return BackendHint::kRtps;
     }
   }
