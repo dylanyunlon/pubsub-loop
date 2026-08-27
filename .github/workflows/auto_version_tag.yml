@@ -1,0 +1,54 @@
+name: Auto Version Tag on main
+on:
+  push:
+    branches: [main]
+
+jobs:
+  version-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      new_tag: ${{ steps.semver.outputs.new_tag }}
+      changelog: ${{ steps.semver.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version bump
+        id: semver
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          release_branches: main
+          tag_prefix: "v"
+          default_bump: patch
+          major_string_token: "BREAKING CHANGE,feat!"
+          minor_string_token: "feat"
+          patch_string_token: "fix,perf,refactor,build"
+          none_string_token: "docs,chore,test,style,ci"
+
+      - name: Output new version
+        run: |
+          echo "New version: ${{ steps.semver.outputs.new_tag }}"
+          echo "Changelog:"
+          echo "${{ steps.semver.outputs.changelog }}"
+
+      - name: Create GitHub Release
+        if: steps.semver.outputs.new_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.semver.outputs.new_tag }}
+          name: "world::io ${{ steps.semver.outputs.new_tag }}"
+          body: ${{ steps.semver.outputs.changelog }}
+          draft: false
+          prerelease: false
+
+  build-and-publish:
+    needs: version-tag
+    if: needs.version-tag.outputs.new_tag != ''
+    uses: ./.github/workflows/build_wheels.yml
+    with:
+      version: ${{ needs.version-tag.outputs.new_tag }}
+    secrets: inherit

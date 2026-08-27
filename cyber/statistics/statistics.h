@@ -24,6 +24,9 @@
 #include "cyber/common/log.h"
 #include "cyber/common/macros.h"
 
+// World snapshot analysis (independent headers, does not break existing API)
+// #include "cyber/statistics/world_snapshot_analyzer.h"  // include as needed
+
 namespace world {
 namespace cyber {
 namespace statistics {

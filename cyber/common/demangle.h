@@ -127,6 +127,46 @@ std::string demangle_instance(const T& obj) {
   return demangle(typeid(obj).name());
 }
 
+/**
+ * demangle_short — strip namespace prefixes, keep innermost class name +
+ * template parameters.
+ *
+ * PRD #63: "transport::UnifiedWriter<IndividualState>"
+ *        → "UnifiedWriter<IndividualState>"
+ *
+ * Finds the last "::" that is NOT inside angle brackets and returns
+ * everything after it.  If the demangled name has no "::", returns the
+ * full demangled string unchanged.
+ */
+inline std::string demangle_short(const char* mangled) {
+  std::string full = demangle(mangled);
+  // Walk backwards to find the last "::" that is outside template brackets.
+  int depth = 0;
+  size_t cut = std::string::npos;
+  for (size_t i = full.size(); i > 0; --i) {
+    char c = full[i - 1];
+    if (c == '>') ++depth;
+    else if (c == '<') --depth;
+    else if (c == ':' && depth == 0 && i >= 2 && full[i - 2] == ':') {
+      cut = i;  // position right after "::"
+      break;
+    }
+  }
+  if (cut != std::string::npos && cut < full.size()) {
+    return full.substr(cut);
+  }
+  return full;
+}
+
+inline std::string demangle_short(const std::string& mangled) {
+  return demangle_short(mangled.c_str());
+}
+
+template <typename T>
+std::string demangle_short() {
+  return demangle_short(typeid(T).name());
+}
+
 }  // namespace common
 }  // namespace cyber
 }  // namespace world
