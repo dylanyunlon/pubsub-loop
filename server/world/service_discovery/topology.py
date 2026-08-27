@@ -62,6 +62,7 @@ class NodeAttributes:
     individual_id: int
     host_name: str = "localhost"
     process_id: int = 0
+    role: str = ""  # PRD #26: "sensor"/"planner"/"actuator"/"observer"
     channels_pub: List[str] = field(default_factory=list)
     channels_sub: List[str] = field(default_factory=list)
     join_time_ns: int = field(default_factory=time.time_ns)
@@ -250,6 +251,94 @@ class TopologyManager:
 
     def on_change(self, callback: Callable[[ChangeMsg], None]) -> int:
         return self._change_signal.connect(callback)
+
+    # ─── PRD #26: diff_by_role predicate overload ───
+    #
+    # CyberRT: TopologyDiff 只支持全量差异输出
+    # pubsub-loop扩展: 按角色(role)过滤拓扑变更
+    #
+    # governance对应:
+    #   AgentMesh 的 ring-based filtering:
+    #     只关注同一 ExecutionRing 内的 agent 变更
+
+    def get_by_role(self, role: str) -> List[NodeAttributes]:
+        """
+        按角色过滤节点 — PRD #26
+
+        role: "sensor" / "planner" / "actuator" / "observer" 等
+        返回该角色的所有节点。
+
+        用途:
+          WorldResolver 只需要知道有碰撞体的个体(role=dynamic/static),
+          不需要知道观察者(role=observer)。
+        """
+        all_nodes = self._node_manager.get_all_nodes()
+        return [n for n in all_nodes
+                if getattr(n, 'role', '') == role]
+
+    def diff_by_role(self, role: str,
+                     predicate: Callable[[NodeAttributes], bool] = None
+                     ) -> List[ChangeMsg]:
+        """
+        按角色过滤拓扑差异 — PRD #26 key-predicate overload
+
+        收集最近的拓扑变更, 只返回指定角色的变更。
+        可选 predicate 进一步过滤。
+
+        用途:
+          transport层: 只关心同进程内节点的加入/离开
+          scheduler: 只关心 priority > 0 的节点变更
+          governance: 只关心低信任(RING_3)节点的变更
+        """
+        changes = self._recent_changes if hasattr(self, '_recent_changes') else []
+        result = []
+        for change in changes:
+            node = self._node_manager.get_node(change.node_name)
+            if node is None:
+                continue
+            if getattr(node, 'role', '') != role:
+                continue
+            if predicate and not predicate(node):
+                continue
+            result.append(change)
+        return result
+
+    def compute_topology_distance(self, node_a: str, node_b: str) -> int:
+        """
+        计算两个节点的拓扑距离
+
+        距离定义:
+          0 = 同一个体(自身)
+          1 = 同进程
+          2 = 同机器不同进程
+          3 = 不同机器
+
+        transport层用它决定传输模式:
+          距离 1 → IntraTransmitter (零拷贝)
+          距离 2 → ShmTransmitter (共享内存)
+          距离 3 → RTPS (网络, 暂不实现)
+
+        对于"世界中有1000个个体"的场景:
+          当前单机单进程 → 距离全部为1 → 全部用Intra(零拷贝)
+          性能足够。跨进程场景后续扩展。
+        """
+        if node_a == node_b:
+            return 0
+        a = self._node_manager.get_node(node_a)
+        b = self._node_manager.get_node(node_b)
+        if a is None or b is None:
+            return 3  # 未知节点视为远端
+        # 比较进程ID
+        pid_a = getattr(a, 'process_id', 0)
+        pid_b = getattr(b, 'process_id', 0)
+        if pid_a == pid_b and pid_a != 0:
+            return 1  # 同进程
+        # 比较主机名
+        host_a = getattr(a, 'host_name', '')
+        host_b = getattr(b, 'host_name', '')
+        if host_a == host_b and host_a != '':
+            return 2  # 同机器不同进程
+        return 3  # 不同机器
 
     def shutdown(self):
         """关闭 — 通知所有节点离开"""

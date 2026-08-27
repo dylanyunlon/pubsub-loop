@@ -314,3 +314,83 @@ class ParameterServer:
     @property
     def name(self) -> str:
         return self._name
+
+# ─── WorldCompat — PRD #119 ───
+#
+# CyberRT: 无版本兼容检查 — 所有模块同步构建
+# pubsub-loop: 个体可以由不同版本的代码创建
+#   例: 旧版个体(v1) 的 MotionRequest 没有 collision_mask 字段
+#        新版个体(v2) 期望所有 MotionRequest 都有 collision_mask
+#   需要版本兼容检查 + 降级适配
+#
+# governance对应:
+#   control_specification 的 schema_version 字段
+
+class VersionInfo:
+    """版本信息 — 语义版本 major.minor.patch"""
+    __slots__ = ('major', 'minor', 'patch')
+
+    def __init__(self, major: int = 0, minor: int = 1, patch: int = 0):
+        self.major = major
+        self.minor = minor
+        self.patch = patch
+
+    def __str__(self):
+        return f"{self.major}.{self.minor}.{self.patch}"
+
+    def __eq__(self, other):
+        if not isinstance(other, VersionInfo):
+            return NotImplemented
+        return (self.major == other.major and
+                self.minor == other.minor and
+                self.patch == other.patch)
+
+    def __lt__(self, other: 'VersionInfo') -> bool:
+        return (self.major, self.minor, self.patch) < \
+               (other.major, other.minor, other.patch)
+
+    def __le__(self, other: 'VersionInfo') -> bool:
+        return self == other or self < other
+
+    @classmethod
+    def parse(cls, version_str: str) -> 'VersionInfo':
+        parts = version_str.split('.')
+        return cls(
+            int(parts[0]) if len(parts) > 0 else 0,
+            int(parts[1]) if len(parts) > 1 else 0,
+            int(parts[2]) if len(parts) > 2 else 0,
+        )
+
+
+WORLD_VERSION = VersionInfo(0, 2, 0)
+MIN_COMPATIBLE_VERSION = VersionInfo(0, 1, 0)
+
+
+class WorldCompat:
+    """
+    版本兼容检查器 — PRD #119
+
+    个体加入世界时检查版本兼容性。
+    消息反序列化时检查是否需要版本迁移。
+    """
+
+    @staticmethod
+    def check(individual_version: VersionInfo) -> tuple:
+        if individual_version.major != WORLD_VERSION.major:
+            return (False,
+                    f"Major version mismatch: individual={individual_version}, "
+                    f"world={WORLD_VERSION}")
+        if individual_version < MIN_COMPATIBLE_VERSION:
+            return (False,
+                    f"Version too old: individual={individual_version}, "
+                    f"minimum={MIN_COMPATIBLE_VERSION}")
+        return (True, "compatible")
+
+    @staticmethod
+    def needs_migration(msg_version: VersionInfo) -> bool:
+        return msg_version < WORLD_VERSION
+
+    @staticmethod
+    def feature_available(feature_name: str,
+                          since_version: VersionInfo) -> bool:
+        return not (WORLD_VERSION < since_version)
