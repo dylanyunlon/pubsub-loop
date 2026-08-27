@@ -219,27 +219,35 @@ class WorldResolver:
     def _broadphase(self, requests: List[MotionRequest]
                     ) -> List[Tuple[MotionRequest, MotionRequest]]:
         """
-        Broadphase — spatial hash 碰撞候选对筛选
+        Broadphase — SpatialHash 碰撞候选对筛选
 
         CyberRT来源: world::data::SpatialHash
-        PRD #1452: sweep-and-prune / spatial hash, ≤3ms budget
+        PRD #1452/#1455: spatial hash, ≤3ms budget
 
-        当前实现: 简化版 — O(n²) pairwise check。
-        后续优化: 移植 CyberRT 的 SpatialHash (PRD #1455)
+        v2: 使用 SpatialHash 替换 O(n²) pairwise check。
+        复杂度: O(n * k), k = 每格平均个体数(通常 1~5)
+        对1000个均匀分布个体: ~5000次检查 vs 500000次
         """
+        from world.data.data_core import SpatialHash
+
+        spatial = SpatialHash(cell_size=self._cell_size)
+        req_map: Dict[int, MotionRequest] = {}
+
+        for req in requests:
+            pos = self._predicted_position(req)
+            spatial.insert(req.individual_id, pos)
+            req_map[req.individual_id] = req
+
         candidates = []
-        for i in range(len(requests)):
-            for j in range(i + 1, len(requests)):
-                a, b = requests[i], requests[j]
-                # 检查碰撞层掩码
-                if not (a.collision_mask & b.collision_mask):
-                    continue
-                # 粗筛: 预测位置的距离
-                pos_a = self._predicted_position(a)
-                pos_b = self._predicted_position(b)
-                dist_sq = (pos_a - pos_b).length_sq()
-                if dist_sq < self._cell_size * self._cell_size:
-                    candidates.append((a, b))
+        for a_id, b_id in spatial.query_pairs():
+            a = req_map.get(a_id)
+            b = req_map.get(b_id)
+            if a is None or b is None:
+                continue
+            # 检查碰撞层掩码
+            if not (a.collision_mask & b.collision_mask):
+                continue
+            candidates.append((a, b))
         return candidates
 
     # ── Narrowphase ──
