@@ -6,3 +6,8 @@ from world.component.dynamic import DynamicComponentBase, SubscriberInfo
 from world.component.unified_base import (
     UnifiedComponentBase, ChannelHandle, ComponentLifecycle,
 )
+from world.component.parallel_dispatcher import (
+    ParallelDispatcher, IndividualDispatcher,
+    WarpExecutionOp, ScalarExecutionOp, VectorizedExecutionOp,
+    DispatchStats,
+)

@@ -109,6 +109,85 @@ class CacheBuffer(Generic[T]):
         with self._lock:
             return list(self._buffer)
 
+    # ------------------------------------------------------------------
+    #  PRD #58: zero-copy collection query interface
+    #  Operate directly on the ring buffer under lock — no intermediate copy.
+    #
+    #  Sources:
+    #    - Apollo CyberRT: cyber/data/cache_buffer.h (CacheBuffer::at/Head/Tail)
+    #    - PRD #58: FindExtremum/Reduce/Filter
+    # ------------------------------------------------------------------
+
+    def find_extremum(
+        self,
+        comp: Callable[[T, T], bool],
+    ) -> Optional[T]:
+        """Find the extremum element in the buffer without copying.
+
+        *comp(a, b)* returns True if *a* is "better" than *b* (e.g., closer,
+        larger).  Returns the winning element, or None if the buffer is empty.
+
+        Holds the lock for exactly one traversal — no intermediate vector.
+
+        CyberRT equivalent:
+            template <typename Compare>
+            bool FindExtremum(shared_ptr<T>& result, Compare comp);
+        """
+        with self._lock:
+            if not self._buffer:
+                return None
+            best = self._buffer[0]
+            for i in range(1, len(self._buffer)):
+                candidate = self._buffer[i]
+                if comp(candidate, best):
+                    best = candidate
+            return best
+
+    def reduce(
+        self,
+        op: Callable[[Any, T], Any],
+        init: Any,
+    ) -> Optional[Any]:
+        """Reduce all buffer elements under a single lock acquisition.
+
+        Returns the accumulated result, or None if the buffer is empty.
+
+        CyberRT equivalent:
+            template <typename U, typename BinaryOp>
+            bool Reduce(U& result, U init, BinaryOp op);
+        """
+        with self._lock:
+            if not self._buffer:
+                return None
+            acc = init
+            for elem in self._buffer:
+                acc = op(acc, elem)
+            return acc
+
+    def filter(
+        self,
+        pred: Callable[[T], bool],
+        max_results: int = 0,
+    ) -> List[T]:
+        """Collect elements matching *pred* under a single lock acquisition.
+
+        If *max_results* > 0, stops after collecting that many matches.
+        Returns an empty list if nothing matches or buffer is empty.
+
+        CyberRT equivalent:
+            template <typename Predicate>
+            uint64_t Filter(vector<shared_ptr<T>>* vec,
+                            uint64_t max_results, Predicate pred);
+        """
+        with self._lock:
+            result: List[T] = []
+            for elem in self._buffer:
+                if pred(elem):
+                    result.append(elem)
+                    if 0 < max_results <= len(result):
+                        break
+            return result
+
 
 class DataDispatcher:
     """
