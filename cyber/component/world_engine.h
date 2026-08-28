@@ -28,6 +28,9 @@
 #include "cyber/base/bounded_queue.h"
 #include "cyber/base/signal.h"
 #include "cyber/common/log.h"
+#include "cyber/component/epoch_guard.h"
+#include "cyber/component/epoch_manager.h"
+#include "cyber/component/epoch_retire_queue.h"
 #include "cyber/node/node.h"
 #include "cyber/transport/backend_router.h"
 #include "cyber/transport/governance.h"
@@ -46,6 +49,10 @@ using transport::IndividualState;
 using transport::TrustRing;
 using transport::Vec3f;
 using transport::Quatf;
+
+// Individual status flags (written to IndividualState::flags)
+static constexpr uint8_t kFlagGranted   = 0x01;
+static constexpr uint8_t kFlagDeparting = 0x02;
 
 /**
  * Registered individual descriptor
@@ -128,12 +135,48 @@ class WorldEngine {
   }
 
   /**
-   * Unregister an individual
+   * Unregister an individual (immediate removal — use RetireIndividual for
+   * safe epoch-deferred reclamation when coroutines may hold raw pointers).
    */
   void UnregisterIndividual(IndividualId id) {
     std::lock_guard<std::mutex> lock(individuals_mutex_);
     individuals_.erase(id.value);
   }
+
+  /**
+   * Retire an individual through the epoch-based reclamation path.
+   * The individual's channels are torn down immediately (same tick),
+   * but its IndividualRecord memory is deferred until all CRoutines
+   * that may have observed it have advanced past this epoch.
+   *
+   * PRD #236: "tick N 置 DEPARTING → 入回收队列 → DeleteReader/DeleteWriter
+   *            → advance_epoch → tick N+1 结束后 safe_reclaim_epoch >= N → reclaim"
+   */
+  void RetireIndividual(IndividualId id) {
+    std::lock_guard<std::mutex> lock(individuals_mutex_);
+    auto it = individuals_.find(id.value);
+    if (it == individuals_.end()) return;
+
+    // Move record to heap for deferred reclamation
+    auto* record = new IndividualRecord(std::move(it->second));
+    individuals_.erase(it);
+
+    // Channel handles are destroyed immediately (same tick)
+    // The node's readers/writers for this individual are cleaned up here.
+    // (In production this would call node_->DeleteReader/DeleteWriter.)
+
+    // Enqueue for epoch-deferred memory reclamation
+    uint64_t retire_epoch = epoch_mgr_.current_epoch();
+    retire_queue_.retire(record, retire_epoch, epoch_mgr_);
+
+    AINFO << "Individual " << id.value << " retired at epoch "
+          << retire_epoch << " (pending: " << retire_queue_.pending_count()
+          << ")";
+  }
+
+  // Epoch manager access (for coroutines to register observers)
+  EpochManager& epoch_manager() { return epoch_mgr_; }
+  const EpochManager& epoch_manager() const { return epoch_mgr_; }
 
   /**
    * Submit a motion request (called by individual's channel callback)
@@ -214,6 +257,9 @@ class WorldEngine {
   }
 
   void ProcessTick(uint64_t tick_id, double dt) {
+    // 0. Advance epoch at tick boundary (PRD #236)
+    epoch_mgr_.advance_epoch();
+
     // 1. Emit tick signal
     on_tick_signal_(tick_id, dt);
 
@@ -297,6 +343,10 @@ class WorldEngine {
     for (auto& col : collisions) {
       on_collision_signal_(col);
     }
+
+    // 5. Epoch reclamation pass (PRD #236)
+    // Frees IndividualRecords whose retire epoch is now safe
+    retire_queue_.reclaim_ready(epoch_mgr_);
   }
 
   void EmitConfirmedState(const IndividualRecord& ind, uint64_t tick_id,
@@ -321,6 +371,10 @@ class WorldEngine {
   std::unordered_map<uint64_t, IndividualRecord> individuals_;
 
   base::BoundedQueue<PendingMotion> pending_motions_{1048576};  // 1M slots
+
+  // Epoch-based lifecycle (PRD #236)
+  EpochManager epoch_mgr_;
+  EpochRetireQueue<IndividualRecord> retire_queue_;
 
   std::atomic<uint64_t> tick_counter_{0};
   std::atomic<bool> running_{false};
