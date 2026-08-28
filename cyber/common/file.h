@@ -38,8 +38,8 @@
 #include "cyber/common/log.h"
 
 /**
- * @namespace apollo::common::util
- * @brief apollo::common::util
+ * @namespace world::common::util
+ * @brief world::common::util
  */
 namespace world {
 namespace cyber {

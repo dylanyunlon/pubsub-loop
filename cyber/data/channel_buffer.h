@@ -48,6 +48,78 @@ class ChannelBuffer {
   uint64_t channel_id() const { return channel_id_; }
   std::shared_ptr<BufferType> Buffer() const { return buffer_; }
 
+  // --- PRD #96: Binary search over state history ring buffer ---------------
+
+  /// Lower bound: returns the smallest index i in [Head, Tail] such that
+  /// key_fn(*at(i)) >= target.  Returns Tail+1 if no such element exists.
+  /// Requires the buffer to be sorted by key_fn (which tick-ordered buffers
+  /// naturally are when keyed on timestamp or tick_id).
+  /// Complexity: O(log N).
+  template <typename KeyFn, typename Target>
+  uint64_t LowerBound(KeyFn key_fn, const Target& target) const {
+    std::lock_guard<std::mutex> lock(buffer_->Mutex());
+    if (buffer_->Empty()) return 0;
+    uint64_t lo = buffer_->Head();
+    uint64_t hi = buffer_->Tail() + 1;
+    while (lo < hi) {
+      uint64_t mid = lo + (hi - lo) / 2;
+      if (key_fn(*buffer_->at(mid)) < target) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo;
+  }
+
+  /// Upper bound: returns the smallest index i such that
+  /// key_fn(*at(i)) > target.
+  template <typename KeyFn, typename Target>
+  uint64_t UpperBound(KeyFn key_fn, const Target& target) const {
+    std::lock_guard<std::mutex> lock(buffer_->Mutex());
+    if (buffer_->Empty()) return 0;
+    uint64_t lo = buffer_->Head();
+    uint64_t hi = buffer_->Tail() + 1;
+    while (lo < hi) {
+      uint64_t mid = lo + (hi - lo) / 2;
+      if (key_fn(*buffer_->at(mid)) <= target) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo;
+  }
+
+  /// Exact binary search: returns pointer to element where key_fn matches
+  /// target, or nullptr if not found.
+  template <typename KeyFn, typename Target>
+  std::shared_ptr<T> BinarySearch(KeyFn key_fn, const Target& target) const {
+    uint64_t idx = LowerBound(key_fn, target);
+    std::lock_guard<std::mutex> lock(buffer_->Mutex());
+    if (idx <= buffer_->Tail()) {
+      auto& elem = buffer_->at(idx);
+      if (key_fn(*elem) == target) return elem;
+    }
+    return nullptr;
+  }
+
+  /// Range query: returns all elements where key_fn(elem) is in [lo, hi].
+  template <typename KeyFn, typename Target>
+  std::vector<std::shared_ptr<T>> Range(KeyFn key_fn, const Target& lo_val,
+                                         const Target& hi_val) const {
+    uint64_t from = LowerBound(key_fn, lo_val);
+    uint64_t to   = UpperBound(key_fn, hi_val);
+    std::vector<std::shared_ptr<T>> result;
+    std::lock_guard<std::mutex> lock(buffer_->Mutex());
+    if (buffer_->Empty()) return result;
+    to = std::min(to, buffer_->Tail() + 1);
+    for (uint64_t i = from; i < to; ++i) {
+      result.push_back(buffer_->at(i));
+    }
+    return result;
+  }
+
  private:
   uint64_t channel_id_;
   std::shared_ptr<BufferType> buffer_;

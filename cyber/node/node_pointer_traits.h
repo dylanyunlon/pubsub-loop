@@ -21,7 +21,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace apollo {
+namespace world {
 namespace cyber {
 namespace node {
 
@@ -112,19 +112,19 @@ class NodePtr {
 
 }  // namespace node
 }  // namespace cyber
-}  // namespace apollo
+}  // namespace world
 
 /// std::pointer_traits specialization for NodePtr<T>.
 namespace std {
 
 template <typename T>
-struct pointer_traits<apollo::cyber::node::NodePtr<T>> {
-  using pointer = apollo::cyber::node::NodePtr<T>;
+struct pointer_traits<world::cyber::node::NodePtr<T>> {
+  using pointer = world::cyber::node::NodePtr<T>;
   using element_type = T;
   using difference_type = std::ptrdiff_t;
 
   template <typename U>
-  using rebind = apollo::cyber::node::NodePtr<U>;
+  using rebind = world::cyber::node::NodePtr<U>;
 
   static pointer pointer_to(element_type& r) noexcept {
     return pointer::pointer_to(r);
